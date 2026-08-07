@@ -1,0 +1,40 @@
+<use case name> 
+Extraction-Pipeline 
+</use case name> 
+
+<Description> 
+Agentic pipeline under a fixed agent chaining that uses hub-and-spoke architecture and also keeps scratchpads for understanding the pipeline status. Also utilizes a compact artifact to handoff structured data for the analysis agent. 
+</Description>
+
+<Actors> 
+Me 
+</Actors>
+
+<Preconditions> 
+Docs in google drive not modified for 5 days. 
+</Preconditions> 
+
+<BasicFlow>
+Ingestion (webhooks and polling to identify new/ready documents on drive) -> Extraction (parallel parsing of text to compact artifact) -> Analysis layer (artifact passed to fixed chain for formatting and citations) -> Routing and export (YAML frontmatter injection and local file writing).
+</BasicFlow>
+
+<Alternative flows> 
+Documents are corrupted or API rate limit: Intelligent retries with exponential backoff or halt and handoff to human via scratchpad logging. 
+Documents that contain images: Handle images gracefully by downloading them to a local temporary staging folder during extraction, passing only lightweight metadata (IDs and alt-text) to the compact artifact to save tokens. During export, move the images to a separated folder next to the vault and inject absolute local file URIs (e.g., `![Alt Text](file:///C:/path/to/images/...)`) into the .md file.
+</Alternative flows> 
+
+<Postconditions> 
+Docx -> md. Markdown files are categorized and saved inside the local Obsidian vault. Extracted images are saved outside the vault in a dedicated, separated folder. 
+</Postconditions>
+
+<Business rules> 
+Doesnt change the semantic content, only enhance it. Automated extraction exclusively on files that haven't changed for 5 days to prevent processing works-in-progress. 
+</Business rules> 
+
+<Nonfunctional requirements> 
+Least token consumption as possible (strictly preventing raw image data or base64 strings from reaching the LLM). Organized obsidian vault. 
+</Nonfunctional requirements> 
+
+<Assumptions> 
+Runs on windows 11, quick and accurate extraction. 
+</Assumptions>
