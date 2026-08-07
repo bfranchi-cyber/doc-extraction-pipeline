@@ -29,15 +29,29 @@
 - [x] User Stories — COMPLETED
 - [x] Workflow Planning — COMPLETED
 - [x] Application Design — COMPLETED
-- [ ] Units Generation — EXECUTE (pending)
+- [x] Units Generation — COMPLETED
 
 ### CONSTRUCTION PHASE
-- [ ] Functional Design — EXECUTE per unit (pending)
-- [ ] NFR Requirements — EXECUTE (pending)
-- [ ] NFR Design — EXECUTE (pending)
-- [ ] Infrastructure Design — EXECUTE (pending)
-- [ ] Code Generation — EXECUTE (pending)
-- [ ] Build and Test — EXECUTE (pending)
+### Unit 1: Foundation
+- [ ] Functional Design — IN PROGRESS
+- [ ] NFR Requirements — PENDING
+- [ ] NFR Design — PENDING
+- [ ] Infrastructure Design — PENDING
+- [ ] Code Generation — PENDING
+### Unit 2: Ingestion
+- [ ] Functional Design — PENDING
+- [ ] Code Generation — PENDING
+### Unit 3: Extraction
+- [ ] Functional Design — PENDING
+- [ ] Code Generation — PENDING
+### Unit 4: Analysis
+- [ ] Functional Design — PENDING
+- [ ] Code Generation — PENDING
+### Unit 5: Export + Coordinator
+- [ ] Functional Design — PENDING
+- [ ] Code Generation — PENDING
+### All Units
+- [ ] Build and Test — PENDING
 
 ### OPERATIONS PHASE
 - [ ] Operations — PLACEHOLDER
