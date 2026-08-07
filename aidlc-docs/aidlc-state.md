@@ -24,6 +24,20 @@
 
 ## Stage Progress
 - [x] Workspace Detection — COMPLETED
+- [x] Reverse Engineering — SKIPPED (greenfield)
 - [x] Requirements Analysis — COMPLETED
-- [ ] User Stories — PENDING APPROVAL
-- [ ] Workflow Planning — PENDING
+- [x] User Stories — COMPLETED
+- [x] Workflow Planning — COMPLETED
+- [ ] Application Design — EXECUTE (pending)
+- [ ] Units Generation — EXECUTE (pending)
+
+### CONSTRUCTION PHASE
+- [ ] Functional Design — EXECUTE per unit (pending)
+- [ ] NFR Requirements — EXECUTE (pending)
+- [ ] NFR Design — EXECUTE (pending)
+- [ ] Infrastructure Design — EXECUTE (pending)
+- [ ] Code Generation — EXECUTE (pending)
+- [ ] Build and Test — EXECUTE (pending)
+
+### OPERATIONS PHASE
+- [ ] Operations — PLACEHOLDER
