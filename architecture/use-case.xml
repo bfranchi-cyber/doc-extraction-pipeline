@@ -37,4 +37,6 @@ Least token consumption as possible (strictly preventing raw image data or base6
 
 <Assumptions> 
 Runs on windows 11, quick and accurate extraction. 
+Uses claude Haiku 4.5 for extraction agent.
+Uses claude Sonnet 4.5 for analysis agent.
 </Assumptions>
