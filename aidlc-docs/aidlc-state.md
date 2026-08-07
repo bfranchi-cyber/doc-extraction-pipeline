@@ -28,7 +28,7 @@
 - [x] Requirements Analysis — COMPLETED
 - [x] User Stories — COMPLETED
 - [x] Workflow Planning — COMPLETED
-- [ ] Application Design — EXECUTE (pending)
+- [x] Application Design — COMPLETED
 - [ ] Units Generation — EXECUTE (pending)
 
 ### CONSTRUCTION PHASE
