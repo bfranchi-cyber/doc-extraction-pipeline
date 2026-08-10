@@ -1,0 +1,45 @@
+# docs-extraction configuration
+# Copy this file to config.toml and fill in your actual values.
+# config.toml is git-ignored and must never be committed.
+
+[paths]
+# Root of your Obsidian vault (must exist)
+vault_path = "C:\\Users\\YOUR_USERNAME\\Documents\\Obsidian Vault"
+
+# Root images folder used by the vault (must exist)
+images_path = "C:\\Users\\YOUR_USERNAME\\Documents\\Obsidian Images"
+
+# Directory where per-document manifest JSON files are stored (must exist)
+manifest_dir = "C:\\Users\\YOUR_USERNAME\\AppData\\Local\\docs-extraction\\manifests"
+
+# Temporary directory for image staging during extraction (must exist)
+staging_dir = "C:\\Users\\YOUR_USERNAME\\AppData\\Local\\docs-extraction\\staging"
+
+# Path to the JSONL scratchpad log file (parent directory must exist)
+scratchpad_path = "C:\\Users\\YOUR_USERNAME\\AppData\\Local\\docs-extraction\\scratchpad.log"
+
+# Path to your Google OAuth 2.0 credentials JSON file (must exist and be valid JSON)
+credentials_path = "C:\\Users\\YOUR_USERNAME\\AppData\\Local\\docs-extraction\\credentials.json"
+
+[drive]
+# Google Drive folder ID to monitor (find in the folder URL)
+folder_id = "YOUR_DRIVE_FOLDER_ID"
+
+[pipeline]
+# Files modified more than this many days ago are eligible for processing
+eligibility_days = 5
+
+# Claude model IDs
+extraction_model = "claude-haiku-4-5-20251001"
+analysis_model   = "claude-sonnet-4-5-20251001"
+
+[categories]
+# List of pre-existing Obsidian vault subfolder names used for classification.
+# The pipeline warns at startup if any category here has no matching vault subfolder.
+list = [
+    "Work",
+    "Research",
+    "Personal",
+    "Meetings",
+    "Reference",
+]
