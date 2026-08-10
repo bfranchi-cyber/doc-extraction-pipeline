@@ -36,17 +36,17 @@
 
 ## Generation Steps
 
-- [ ] Step 1: Create project directory structure
-- [ ] Step 2: Create `pyproject.toml`
-- [ ] Step 3: Create `config.toml.example`
-- [ ] Step 4: Create `.gitignore`
-- [ ] Step 5: Create `src/pipeline/__init__.py`
-- [ ] Step 6: Create `src/pipeline/models.py`
-- [ ] Step 7: Create `src/pipeline/scratchpad.py`
-- [ ] Step 8: Create `src/pipeline/config.py`
-- [ ] Step 9: Create `src/pipeline/manifest.py`
-- [ ] Step 10: Create `tests/unit/test_config.py` + `tests/unit/test_manifest.py` + `tests/unit/test_scratchpad.py`
-- [ ] Step 11: Create `tests/property/test_manifest_pbt.py`
+- [x] Step 1: Create project directory structure
+- [x] Step 2: Create `pyproject.toml`
+- [x] Step 3: Create `config.toml.example`
+- [x] Step 4: Create `.gitignore`
+- [x] Step 5: Create `src/pipeline/__init__.py`
+- [x] Step 6: Create `src/pipeline/models.py`
+- [x] Step 7: Create `src/pipeline/scratchpad.py`
+- [x] Step 8: Create `src/pipeline/config.py`
+- [x] Step 9: Create `src/pipeline/manifest.py`
+- [x] Step 10: Create `tests/unit/test_config.py` + `tests/unit/test_manifest.py` + `tests/unit/test_scratchpad.py`
+- [x] Step 11: Create `tests/property/test_manifest_pbt.py`
 
 ---
 

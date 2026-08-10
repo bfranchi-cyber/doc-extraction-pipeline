@@ -37,7 +37,7 @@
 - [x] NFR Requirements — COMPLETED
 - [x] NFR Design — COMPLETED
 - [x] Infrastructure Design — COMPLETED
-- [ ] Code Generation — PENDING
+- [x] Code Generation — COMPLETED
 ### Unit 2: Ingestion
 - [ ] Functional Design — PENDING
 - [ ] Code Generation — PENDING
