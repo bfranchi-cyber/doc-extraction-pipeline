@@ -48,6 +48,22 @@
 
 ---
 
+## Unit 1: Foundation — Functional Design — Answers Received
+**Timestamp**: 2026-08-07T12:01:00Z
+**User Input**: "done" — Q1=D (terminal-only manifest writes; transient errors retry silently, permanent errors write failed), Q2=A (validate all paths at load time), Q3=A (raise ManifestCorruptionError on malformed JSON), Q4=A (skipped = manifest-based only), Q5=C (load from config.toml, validate against vault at startup, warn on mismatch)
+**AI Response**: No ambiguities or contradictions detected. Generated three functional design artifacts: domain-entities.md, business-rules.md, business-logic-model.md. Awaiting approval.
+**Context**: CONSTRUCTION — Unit 1: Foundation — Functional Design — Part 2 Generation complete, awaiting approval.
+
+---
+
+## Session Resume — CONSTRUCTION PHASE
+**Timestamp**: 2026-08-07T12:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Session resumed. Loaded all INCEPTION artifacts. Current position: CONSTRUCTION PHASE — Unit 1: Foundation — Functional Design (IN PROGRESS). Created foundation-functional-design-plan.md with 5 clarifying questions. Awaiting user answers.
+**Context**: CONSTRUCTION PHASE — Unit 1: Foundation — Functional Design, Part 1 Planning.
+
+---
+
 ## Units Generation — Plan Questions Created
 **Timestamp**: 2026-08-07T00:14:00Z
 **User Input**: (proceeding from Application Design approval)
@@ -125,6 +141,30 @@
 **User Input**: "Uses stories stage"
 **AI Response**: Validated user stories are justified (complex multi-stage pipeline, new system, non-trivial business rules). Created user-stories-assessment.md and story-generation-plan.md with 5 planning questions. Awaiting user answers.
 **Context**: INCEPTION - User Stories — Part 1 Planning, GATE: awaiting user answers.
+
+---
+
+## Unit 1: Foundation — NFR Requirements — Artifacts Generated
+**Timestamp**: 2026-08-10T00:02:00Z
+**User Input**: "done" — Q1=A (Python 3.11+), Q2=B (JSONL scratchpad), Q3=B (dataclasses-json), Q4=C (no type checker), Q5=B (90% coverage)
+**AI Response**: No ambiguities detected. Generated nfr-requirements.md (8 NFRs) and tech-stack-decisions.md (6 TSD entries). Updated aidlc-state.md. Presenting for approval.
+**Context**: CONSTRUCTION — Unit 1: Foundation — NFR Requirements — Generation complete, awaiting approval.
+
+---
+
+## Unit 1: Foundation — NFR Requirements — Plan Created
+**Timestamp**: 2026-08-10T00:01:00Z
+**User Input**: "a" (continue to NFR Requirements)
+**AI Response**: Analyzed functional design artifacts. Created foundation-nfr-requirements-plan.md with 5 questions covering Python version, scratchpad log format, serialization approach, type checking enforcement, and test coverage threshold. Awaiting user answers.
+**Context**: CONSTRUCTION — Unit 1: Foundation — NFR Requirements — Part 1 Planning, awaiting user answers.
+
+---
+
+## Session Resume — CONSTRUCTION PHASE
+**Timestamp**: 2026-08-10T00:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Session resumed. Loaded all INCEPTION and CONSTRUCTION artifacts. Current position: CONSTRUCTION PHASE — Unit 1: Foundation — Functional Design already COMPLETED (domain-entities.md, business-rules.md, business-logic-model.md all present). Next stage: NFR Requirements for Unit 1: Foundation.
+**Context**: CONSTRUCTION PHASE — Unit 1: Foundation — Functional Design completed in prior session.
 
 ---
 

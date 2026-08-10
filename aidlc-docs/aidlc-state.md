@@ -33,8 +33,8 @@
 
 ### CONSTRUCTION PHASE
 ### Unit 1: Foundation
-- [ ] Functional Design — IN PROGRESS
-- [ ] NFR Requirements — PENDING
+- [x] Functional Design — COMPLETED
+- [x] NFR Requirements — COMPLETED
 - [ ] NFR Design — PENDING
 - [ ] Infrastructure Design — PENDING
 - [ ] Code Generation — PENDING
