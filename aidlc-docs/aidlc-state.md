@@ -35,8 +35,8 @@
 ### Unit 1: Foundation
 - [x] Functional Design — COMPLETED
 - [x] NFR Requirements — COMPLETED
-- [ ] NFR Design — PENDING
-- [ ] Infrastructure Design — PENDING
+- [x] NFR Design — COMPLETED
+- [x] Infrastructure Design — COMPLETED
 - [ ] Code Generation — PENDING
 ### Unit 2: Ingestion
 - [ ] Functional Design — PENDING

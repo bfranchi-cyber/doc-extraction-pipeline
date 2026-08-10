@@ -144,6 +144,54 @@
 
 ---
 
+## Unit 1: Foundation — Infrastructure Design — Artifacts Generated
+**Timestamp**: 2026-08-10T00:09:00Z
+**User Input**: "done" — Q1=A (pyproject.toml + pip install -e .), Q2=A (src/ layout), Q3=B (README only, no Makefile)
+**AI Response**: No ambiguities. Generated infrastructure-design.md (5 decisions: packaging, src layout, filesystem allocation, .gitignore, setup procedure) and deployment-architecture.md (runtime topology + dependency graph). Updated aidlc-state.md. Presenting for approval.
+**Context**: CONSTRUCTION — Unit 1: Foundation — Infrastructure Design — Generation complete, awaiting approval.
+
+---
+
+## Unit 1: Foundation — Infrastructure Design — Plan Created
+**Timestamp**: 2026-08-10T00:08:00Z
+**User Input**: "continue"
+**AI Response**: NFR Design approved. Assessed infrastructure categories — cloud/network/messaging all N/A. Created foundation-infrastructure-design-plan.md with 3 questions: Python packaging approach, source layout, and task runner. Awaiting user answers.
+**Context**: CONSTRUCTION — Unit 1: Foundation — Infrastructure Design — Plan created, awaiting user answers.
+
+---
+
+## Unit 1: Foundation — NFR Design — Approved
+**Timestamp**: 2026-08-10T00:07:00Z
+**User Input**: "continue"
+**AI Response**: NFR Design approved. Proceeding to Infrastructure Design.
+**Context**: CONSTRUCTION — Unit 1: Foundation — NFR Design — COMPLETED.
+
+---
+
+## Unit 1: Foundation — NFR Design — Artifacts Generated
+**Timestamp**: 2026-08-10T00:06:00Z
+**User Input**: "done" — Q1=B+extended (skip+log+fail, with typed PipelineError payload: error_type/text/is_retriable/suggestion), Q2=A (Scratchpad class with info/warn/error methods), Q3=A (validate credentials JSON content + type field at startup)
+**AI Response**: No ambiguities. Key design impact: extended BR-02 error taxonomy into 4 named types (transient/business/validation/permission) as PipelineError dataclass. Generated nfr-design-patterns.md (4 patterns) and logical-components.md (4 components). Updated aidlc-state.md. Presenting for approval.
+**Context**: CONSTRUCTION — Unit 1: Foundation — NFR Design — Generation complete, awaiting approval.
+
+---
+
+## Unit 1: Foundation — NFR Design — Plan Created
+**Timestamp**: 2026-08-10T00:04:00Z
+**User Input**: "next"
+**AI Response**: NFR Requirements approved. Analyzed NFR artifacts. Created foundation-nfr-design-plan.md with 3 targeted questions covering Coordinator response to ManifestCorruptionError, Scratchpad implementation shape, and credential file content validation. Awaiting user answers.
+**Context**: CONSTRUCTION — Unit 1: Foundation — NFR Design — Part 1 Planning, awaiting user answers.
+
+---
+
+## Unit 1: Foundation — NFR Requirements — Approved
+**Timestamp**: 2026-08-10T00:03:00Z
+**User Input**: "next"
+**AI Response**: NFR Requirements approved. Proceeding to NFR Design.
+**Context**: CONSTRUCTION — Unit 1: Foundation — NFR Requirements — COMPLETED.
+
+---
+
 ## Unit 1: Foundation — NFR Requirements — Artifacts Generated
 **Timestamp**: 2026-08-10T00:02:00Z
 **User Input**: "done" — Q1=A (Python 3.11+), Q2=B (JSONL scratchpad), Q3=B (dataclasses-json), Q4=C (no type checker), Q5=B (90% coverage)
