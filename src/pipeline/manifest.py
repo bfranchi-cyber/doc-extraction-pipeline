@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from pipeline.models import ManifestCorruptionError, ManifestRecord
+from pipeline.exceptions import ManifestCorruptionError
+from pipeline.models import ManifestRecord
 
 
 class ManifestStore:

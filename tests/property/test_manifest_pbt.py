@@ -8,7 +8,9 @@ PBT-09: Framework — hypothesis
 """
 from __future__ import annotations
 
-import pytest
+import tempfile
+from pathlib import Path
+
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -65,12 +67,13 @@ def test_manifest_record_json_round_trip(record: ManifestRecord) -> None:
 
 @given(record=manifest_records())
 @settings(max_examples=100)
-def test_set_then_get_returns_matching_record(tmp_path, record: ManifestRecord) -> None:
+def test_set_then_get_returns_matching_record(record: ManifestRecord) -> None:
     """After set(), get() returns a record with the same file_id and status."""
     from pipeline.manifest import ManifestStore
-    store = ManifestStore(tmp_path / "manifests")
-    store.set(record.file_id, record)
-    result = store.get(record.file_id)
+    with tempfile.TemporaryDirectory() as d:
+        store = ManifestStore(Path(d) / "manifests")
+        store.set(record.file_id, record)
+        result = store.get(record.file_id)
     assert result is not None
     assert result.file_id == record.file_id
     assert result.status == record.status
@@ -78,19 +81,21 @@ def test_set_then_get_returns_matching_record(tmp_path, record: ManifestRecord) 
 
 @given(record=manifest_records(status_strategy=st.just("success")))
 @settings(max_examples=100)
-def test_is_processed_true_after_success_set(tmp_path, record: ManifestRecord) -> None:
+def test_is_processed_true_after_success_set(record: ManifestRecord) -> None:
     """is_processed() returns True after setting a success record."""
     from pipeline.manifest import ManifestStore
-    store = ManifestStore(tmp_path / "manifests")
-    store.set(record.file_id, record)
-    assert store.is_processed(record.file_id) is True
+    with tempfile.TemporaryDirectory() as d:
+        store = ManifestStore(Path(d) / "manifests")
+        store.set(record.file_id, record)
+        assert store.is_processed(record.file_id) is True
 
 
 @given(record=manifest_records(status_strategy=st.just("failed")))
 @settings(max_examples=100)
-def test_is_processed_false_after_failed_set(tmp_path, record: ManifestRecord) -> None:
+def test_is_processed_false_after_failed_set(record: ManifestRecord) -> None:
     """is_processed() returns False after setting a failed record."""
     from pipeline.manifest import ManifestStore
-    store = ManifestStore(tmp_path / "manifests")
-    store.set(record.file_id, record)
-    assert store.is_processed(record.file_id) is False
+    with tempfile.TemporaryDirectory() as d:
+        store = ManifestStore(Path(d) / "manifests")
+        store.set(record.file_id, record)
+        assert store.is_processed(record.file_id) is False

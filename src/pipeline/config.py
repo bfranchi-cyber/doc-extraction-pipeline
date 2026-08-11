@@ -5,7 +5,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-from pipeline.models import ConfigError, CredentialsError
+from pipeline.exceptions import ConfigError, CredentialsError
 from pipeline.scratchpad import Scratchpad
 
 

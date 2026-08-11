@@ -14,22 +14,27 @@ from pipeline.models import ConfigError, CredentialsError
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _p(path) -> str:
+    """Return path as a forward-slash string safe for TOML double-quoted values."""
+    return str(path).replace("\\", "/")
+
+
 def _write_toml(tmp_path: Path, overrides: dict | None = None) -> Path:
     """Write a valid config.toml to tmp_path, applying any field overrides."""
-    vault      = tmp_path / "vault";      vault.mkdir()
-    images     = tmp_path / "images";     images.mkdir()
-    manifests  = tmp_path / "manifests";  manifests.mkdir()
-    staging    = tmp_path / "staging";    staging.mkdir()
+    vault      = tmp_path / "vault";      vault.mkdir(exist_ok=True)
+    images     = tmp_path / "images";     images.mkdir(exist_ok=True)
+    manifests  = tmp_path / "manifests";  manifests.mkdir(exist_ok=True)
+    staging    = tmp_path / "staging";    staging.mkdir(exist_ok=True)
     creds_file = tmp_path / "credentials.json"
     creds_file.write_text(json.dumps({"type": "authorized_user"}), encoding="utf-8")
 
     defaults = {
-        "vault_path":       str(vault),
-        "images_path":      str(images),
-        "manifest_dir":     str(manifests),
-        "staging_dir":      str(staging),
-        "scratchpad_path":  str(tmp_path / "scratchpad.log"),
-        "credentials_path": str(creds_file),
+        "vault_path":       _p(vault),
+        "images_path":      _p(images),
+        "manifest_dir":     _p(manifests),
+        "staging_dir":      _p(staging),
+        "scratchpad_path":  _p(tmp_path / "scratchpad.log"),
+        "credentials_path": _p(creds_file),
         "folder_id":        "FAKE_DRIVE_ID",
         "eligibility_days": 5,
         "extraction_model": "claude-haiku-4-5-20251001",
@@ -37,7 +42,11 @@ def _write_toml(tmp_path: Path, overrides: dict | None = None) -> Path:
         "categories":       '["Work", "Research"]',
     }
     if overrides:
-        defaults.update(overrides)
+        # Normalise any Path overrides that contain Windows backslashes
+        defaults.update({
+            k: _p(v) if isinstance(v, (str, Path)) and "\\" in str(v) else v
+            for k, v in overrides.items()
+        })
 
     toml_text = textwrap.dedent(f"""
         [paths]
