@@ -1,5 +1,21 @@
 # AI-DLC Audit Log
 
+## Unit 3: Extraction — Functional Design Start
+**Timestamp**: 2026-08-11T00:05:00Z
+**User Input**: (automatic progression after test verification)
+**AI Response**: Starting Functional Design for Unit 3: Extraction. Generating business-logic-model.md, domain-entities.md, business-rules.md.
+**Context**: CONSTRUCTION — Unit 3: Extraction — Functional Design
+
+---
+
+## Post-Refactor Test Verification
+**Timestamp**: 2026-08-11T00:00:00Z
+**User Input**: (session resumed — exception centralization refactor was applied)
+**AI Response**: Ran full test suite (78 tests). Fixed two pre-existing issues unrelated to the refactor: (1) Windows backslashes in TOML string literals in test_config.py — added _p() helper to emit forward-slash paths; (2) tmp_path fixture used inside @given in test_manifest_pbt.py — replaced with tempfile.TemporaryDirectory(). All 78 tests pass.
+**Context**: CONSTRUCTION — Unit 2: Ingestion — Code Generation verification complete.
+
+---
+
 ## Workspace Detection
 **Timestamp**: 2026-08-07T00:00:00Z
 **User Input**: "start ai-dlc"
