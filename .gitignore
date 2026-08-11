@@ -11,6 +11,8 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+.hypothesis/tmp
+.hypothesis/unicode_data
 
 # Build / packaging
 dist/
