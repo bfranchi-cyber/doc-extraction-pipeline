@@ -39,7 +39,7 @@
 - [x] Infrastructure Design — COMPLETED
 - [x] Code Generation — COMPLETED
 ### Unit 2: Ingestion
-- [ ] Functional Design — PENDING
+- [x] Functional Design — COMPLETED
 - [ ] Code Generation — PENDING
 ### Unit 3: Extraction
 - [ ] Functional Design — PENDING

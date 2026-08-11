@@ -256,6 +256,70 @@
 
 ---
 
+## Unit 2: Ingestion — Functional Design — Artifacts Generated
+**Timestamp**: 2026-08-10T12:02:00Z
+**User Input**: "done" — Q1=B (MCP tool calls), Q2=B (recursive folder scan), Q3=A (original filename), Q4=B (DownloadError raised, Coordinator writes manifest), Q5=B (inline retry per function)
+**AI Response**: No ambiguities or contradictions. Added collision-handling rule BR-I-06 (derived from Q2=B + Q3=A combination). Generated domain-entities.md (5 entities/concepts), business-rules.md (12 rules BR-I-01 through BR-I-12), business-logic-model.md (3 workflows + data flow + PBT applicability). Updated aidlc-state.md and plan checkboxes. Presenting for approval.
+**Context**: CONSTRUCTION — Unit 2: Ingestion — Functional Design — Part 2 Generation complete, awaiting approval.
+
+---
+
+## Unit 2: Ingestion — Functional Design — Plan Created
+**Timestamp**: 2026-08-10T12:01:00Z
+**User Input**: "done" (Q1=A in session-resume-questions.md — continue to Unit 2: Ingestion)
+**AI Response**: Loaded all INCEPTION artifacts and Unit 1 design artifacts. Analyzed Unit 2 scope (discover_eligible_files, download_file, OAuth, 5-day eligibility). Created ingestion-functional-design-plan.md with 5 clarifying questions. Awaiting user answers.
+**Context**: CONSTRUCTION — Unit 2: Ingestion — Functional Design — Part 1 Planning, awaiting user answers.
+
+---
+
+## Session Resume — CONSTRUCTION PHASE (Unit 2 onward)
+**Timestamp**: 2026-08-10T12:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Session resumed. All INCEPTION artifacts and Unit 1 construction artifacts confirmed. Current position: CONSTRUCTION PHASE — Unit 2: Ingestion (PENDING). Created session-resume-questions.md. Awaiting user direction.
+**Context**: CONSTRUCTION PHASE — Unit 1 fully complete. Next: Unit 2: Ingestion — Functional Design.
+
+---
+
+## Session Resume — CONSTRUCTION PHASE (Unit 2: Ingestion — Code Generation)
+**Timestamp**: 2026-08-11T00:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Session resumed. Loaded all INCEPTION, Unit 1 construction, and Unit 2 Functional Design artifacts. Unit 2: Ingestion Functional Design is COMPLETED (3 artifacts generated: business-logic-model.md, business-rules.md, domain-entities.md). Next stage: Code Generation — Part 1 Planning for Unit 2: Ingestion. Creating ingestion-code-generation-plan.md.
+**Context**: CONSTRUCTION PHASE — Unit 2: Ingestion — Code Generation — Part 1 Planning.
+
+---
+
+## Unit 2: Ingestion — Code Generation — Plan Approval Prompt
+**Timestamp**: 2026-08-11T00:01:00Z
+**User Input**: (awaiting approval)
+**AI Response**: Created ingestion-code-generation-plan.md with 4 steps: Step 1 (ingestion.py), Step 2 (test_ingestion.py), Step 3 (integration test doc stub), Step 4 (PBT tests). Presented for user approval.
+**Context**: CONSTRUCTION PHASE — Unit 2: Ingestion — Code Generation — Part 1 Planning, awaiting user approval.
+
+---
+
+## Unit 2: Ingestion — Code Generation — Plan Change Request
+**Timestamp**: 2026-08-11T00:02:00Z
+**User Input**: "not necessarily failed files are eligible for retry. We need to classify the error into some categories There are some rules on how to handle it: transient -> retry; validation/permission -> auth flow and retry once, if failed again escalate to human with a comprehensive handoff (error type, error logs, summary and fix suggestion); business -> do not retry"
+**AI Response**: Change request accepted. Updating functional design artifacts (business-rules.md, business-logic-model.md) and code generation plan (ingestion-code-generation-plan.md) to reflect error classification rules. Key changes: (1) BR-I-03 updated — failed-file retry eligibility now depends on error_type (transient=retryable, business/validation/permission=not retryable); (2) Error handling split into three paths; (3) New EscalationRequiredError exception; (4) Manifest retry-eligibility check reads error_type from stored PipelineError JSON; (5) DriveClient callers accept a client_refresher factory for re-auth on permission errors.
+**Context**: CONSTRUCTION PHASE — Unit 2: Ingestion — Functional Design + Code Generation Plan update.
+
+---
+
+## Unit 2: Ingestion — Code Generation — Plan Change Request (Refinement)
+**Timestamp**: 2026-08-11T00:03:00Z
+**User Input**: "great, but when the error is classified as business, it become retriable if and only if the error is eligibility date check"
+**AI Response**: Refinement accepted. The eligibility date check is a business rule violation that resolves with time — the file will eventually age past 5 days. Changed retry-eligibility logic in BR-I-03 and _scan_folder to use `is_retriable` from the stored PipelineError (not error_type alone). Business errors default to `is_retriable=False`; eligibility date check errors have `is_retriable=True`. The re-auth routing (validation/permission) still uses error_type. Updated BR-I-03, BR-I-10, business-logic-model.md, and code generation plan.
+**Context**: CONSTRUCTION PHASE — Unit 2: Ingestion — Functional Design + Code Generation Plan refinement.
+
+---
+
+## Unit 2: Ingestion — Code Generation — Plan Change Request (Refinement 2)
+**Timestamp**: 2026-08-11T00:04:00Z
+**User Input**: "the flag is not true always for the date-eligibility. it becomes true as soon as the date-eligibility becomes obsolete (5 days - x days) [x is the time that the file hasn't been touched]"
+**AI Response**: Correction accepted. `is_retriable` is a point-in-time snapshot — for date-eligibility failures it is stored as False (accurate: file WAS too recent at time of failure). Retriability is time-dependent: `now - file.last_modified >= eligibility_days`. Introduced a distinct `error_type="business_date_eligibility"` to mark these records. _scan_folder step iii detects this marker and re-evaluates the date condition dynamically using the Drive listing's current last_modified — since the date filter (step ii) already ran before step iii, a date-eligibility failed file that reaches step iii has already passed the date check and is eligible. Stored is_retriable for this error type is False (state at time of failure). Updated BR-I-03, BR-I-10, business-logic-model.md, domain-entities.md, and code generation plan.
+**Context**: CONSTRUCTION PHASE — Unit 2: Ingestion — Functional Design + Code Generation Plan refinement 2.
+
+---
+
 ## Requirements Analysis — Change Request
 **Timestamp**: 2026-08-07T00:04:00Z
 **User Input**: "Request changes: <FR-04>Its not just a hub and spoke. It is a prompt chaining pipeline + hub between phases for structured and complete handoff between agents.</FR-04> <FR-06>compact artifact can keep image data? how is images being handled in this case? The categories are already defined into the obsidian vault, the extraction agent only chooses the best fit.</FR-06>"
