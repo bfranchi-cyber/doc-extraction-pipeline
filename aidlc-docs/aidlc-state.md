@@ -40,7 +40,7 @@
 - [x] Code Generation — COMPLETED
 ### Unit 2: Ingestion
 - [x] Functional Design — COMPLETED
-- [ ] Code Generation — PENDING
+- [x] Code Generation — COMPLETED
 ### Unit 3: Extraction
 - [ ] Functional Design — PENDING
 - [ ] Code Generation — PENDING

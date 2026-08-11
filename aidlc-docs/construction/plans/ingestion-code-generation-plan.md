@@ -38,10 +38,10 @@
 
 ## Generation Steps
 
-- [ ] Step 1: Create `src/pipeline/ingestion.py`
-- [ ] Step 2: Create `tests/unit/test_ingestion.py`
-- [ ] Step 3: Create `tests/integration/test_ingestion_drive.md` (stub + documentation only — Drive MCP not mockable in unit tests)
-- [ ] Step 4: Create `tests/property/test_ingestion_pbt.py`
+- [x] Step 1: Create `src/pipeline/ingestion.py`
+- [x] Step 2: Create `tests/unit/test_ingestion.py`
+- [x] Step 3: Create `tests/integration/test_ingestion_drive.md` (stub + documentation only — Drive MCP not mockable in unit tests)
+- [x] Step 4: Create `tests/property/test_ingestion_pbt.py`
 
 ---
 
