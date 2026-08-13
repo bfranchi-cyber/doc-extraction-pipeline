@@ -36,13 +36,13 @@ def _make_config(tmp_path: Path, categories: tuple[str, ...] = ("Finance", "HR",
     from pipeline.config import Config
 
     vault = tmp_path / "vault"
-    vault.mkdir()
+    vault.mkdir(parents=True, exist_ok=True)
     images = tmp_path / "images"
-    images.mkdir()
+    images.mkdir(parents=True, exist_ok=True)
     manifest = tmp_path / "manifest"
-    manifest.mkdir()
+    manifest.mkdir(parents=True, exist_ok=True)
     staging = tmp_path / "staging"
-    staging.mkdir()
+    staging.mkdir(parents=True, exist_ok=True)
     creds = tmp_path / "creds.json"
     creds.write_text('{"type": "authorized_user"}', encoding="utf-8")
 
