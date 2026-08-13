@@ -42,8 +42,8 @@
 - [x] Functional Design — COMPLETED
 - [x] Code Generation — COMPLETED
 ### Unit 3: Extraction
-- [ ] Functional Design — PENDING
-- [ ] Code Generation — PENDING
+- [x] Functional Design — COMPLETED
+- [x] Code Generation — COMPLETED
 ### Unit 4: Analysis
 - [ ] Functional Design — PENDING
 - [ ] Code Generation — PENDING

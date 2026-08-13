@@ -1,5 +1,93 @@
 # AI-DLC Audit Log
 
+## Session Resume
+**Timestamp**: 2026-08-13T12:00:00Z
+**User Input**: "start ai-dlc"
+**AI Response**: Detected existing project in progress. Loaded aidlc-state.md. Unit 3: Extraction Code Generation COMPLETED. Next units: Unit 4: Analysis (Functional Design + Code Generation PENDING) and Unit 5: Export + Coordinator (PENDING). Presenting welcome-back prompt.
+**Context**: CONSTRUCTION — Unit 4: Analysis — starting next unit
+
+---
+
+## Unit 3: Extraction — Code Generation COMPLETED
+**Timestamp**: 2026-08-13T00:07:00Z
+**User Input**: "A" (fresh app instance per call, approved plan, proceed)
+**AI Response**: All 6 steps executed. Created pyproject.toml update, extraction_server.py, extraction.py, test_extraction.py, test_extraction_pbt.py, test_extraction_claude.md. aidlc-state.md updated.
+**Context**: CONSTRUCTION — Unit 3: Extraction — Code Generation DONE
+
+---
+
+## Code Generation Approved — Executing All 6 Steps
+**Timestamp**: 2026-08-13T00:06:00Z
+**User Input**: "A" (fresh FastMCP app instance per process() call)
+**AI Response**: Plan finalised. Executing Steps 1-6: pyproject.toml, extraction_server.py, extraction.py, test_extraction.py, test_extraction_pbt.py, test_extraction_claude.md
+**Context**: CONSTRUCTION — Unit 3: Extraction — Code Generation Part 2 (Generation)
+
+---
+
+## MCP Architecture Answers — Plan Update In Progress
+**Timestamp**: 2026-08-13T00:05:00Z
+**User Input**: "done" (mcp-architecture-questions.md: Q1=C entire pipeline as MCP tools, Q2=A local stdio, Q3=C tool_runner with @tool decorator)
+**AI Response**: Architecture resolved. Updating extraction-code-generation-plan.md: (1) new src/pipeline/extraction_server.py (FastMCP server with parse_document + stage_images tools), (2) ExtractionAgent refactored to use async_mcp_tool + tool_runner, (3) pyproject.toml deps updated. classify step = Claude's own LLM reasoning between parse and stage tools.
+**Context**: CONSTRUCTION — Unit 3: Extraction — plan rewrite for MCP architecture
+
+---
+
+## MCP Architecture Clarification Needed
+**Timestamp**: 2026-08-13T00:04:00Z
+**User Input**: "done" (sdk-followup-questions.md: Q1=B — anthropic package tool use via MCPs, not vanilla tool calls)
+**AI Response**: Researched Anthropic MCP connector API (beta header mcp-client-2025-11-20, requires remote HTTPS servers; client-side helpers via `anthropic[mcp]` for local stdio). Identified architectural mismatch: ExtractionAgent's three operations have different LLM-involvement profiles. Creating mcp-architecture-questions.md to clarify MCP server model before updating the code generation plan.
+**Context**: CONSTRUCTION — Unit 3: Extraction — pre-generation, MCP architecture clarification
+
+---
+
+## Requirement Change — SDK Clarification Answers + Mismatch Identified
+**Timestamp**: 2026-08-13T00:03:00Z
+**User Input**: "done" (sdk-clarification-questions.md answered: Q1=B claude-agent-sdk, Q2=C higher-level abstraction, Q3=B ExtractionAgent + future agents, Q4=A no change to Units 1-2)
+**AI Response**: Researched claude-agent-sdk. Found critical mismatch: claude-agent-sdk wraps the Claude Code CLI subprocess and is designed for agentic tool-use loops (file ops, bash, web search). It is NOT suited for single-turn document extraction/classification pipelines. Surfacing this to user before creating a follow-up question file.
+**Context**: CONSTRUCTION — Unit 3: Extraction — clarification, mismatch identified
+
+---
+
+## Requirement Change — Anthropic SDK for Agents
+**Timestamp**: 2026-08-13T00:02:00Z
+**User Input**: "B, I would like to use the anthropic SDK for the agents. Even those who are already implemented"
+**AI Response**: Requirement change noted. This affects Unit 3 (code generation plan not yet executed) AND Units 1 and 2 (already implemented). Creating sdk-clarification-questions.md to understand the exact scope and intent before updating plans or code.
+**Context**: CONSTRUCTION — Unit 3: Extraction — pre-generation, scope change requiring clarification
+
+---
+
+## Session Resume — Artifact Review Request
+**Timestamp**: 2026-08-13T00:01:00Z
+**User Input**: "B review artifact G"
+**AI Response**: Loading Unit 3: Extraction functional design artifacts (business-logic-model.md, domain-entities.md, business-rules.md). Presenting artifacts and flagging discrepancies with the code generation plan.
+**Context**: CONSTRUCTION — Unit 3: Extraction — pre-generation artifact review
+
+---
+
+## Session Resume
+**Timestamp**: 2026-08-13T00:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Detected existing project in progress. Loaded aidlc-state.md. Unit 3: Extraction Code Generation plan exists (extraction-code-generation-plan.md) — all 4 steps are unchecked (pending). Presenting welcome-back prompt.
+**Context**: CONSTRUCTION — Unit 3: Extraction — Code Generation Part 2 (Generation)
+
+---
+
+## Unit 3: Extraction — Code Generation Plan Created
+**Timestamp**: 2026-08-11T12:05:00Z
+**User Input**: "A" (proceed to Code Generation for Unit 3: Extraction)
+**AI Response**: Loaded all context (functional design artifacts, existing source code patterns, tech-stack decisions). Created extraction-code-generation-plan.md with 4 steps. Presenting plan summary for user approval.
+**Context**: CONSTRUCTION — Unit 3: Extraction — Code Generation Part 1 (Planning)
+
+---
+
+## Session Resume
+**Timestamp**: 2026-08-11T12:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Detected existing project in progress. Loaded aidlc-state.md. Unit 3: Extraction Functional Design is COMPLETED (all plan steps checked). Next step: Code Generation for Unit 3: Extraction. Presented session resume prompt.
+**Context**: CONSTRUCTION — Unit 3: Extraction — resuming
+
+---
+
 ## Unit 3: Extraction — Functional Design Start
 **Timestamp**: 2026-08-11T00:05:00Z
 **User Input**: (automatic progression after test verification)
