@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mcp.server.fastmcp.exceptions import ToolError
+
 from pipeline.exceptions import PipelineError
 from pipeline.extraction import ExtractionAgent, _apply_category_validation, _build_prompt
 from pipeline.extraction_server import (
@@ -142,25 +144,28 @@ class TestParseDocument:
         path = tmp_path / "bad.docx"
         path.write_bytes(b"not a docx")
         app = make_extraction_app(MockImageClient(), _make_scratchpad(tmp_path))
-        with pytest.raises(PipelineError) as exc_info:
+        with pytest.raises(ToolError) as exc_info:
             asyncio.run(app._tool_manager.call_tool("parse_document", {"file_path": str(path), "mime_type": DOCX_MIME}))
-        assert exc_info.value.error_type == "business"
+        assert isinstance(exc_info.value.__cause__, PipelineError)
+        assert exc_info.value.__cause__.error_type == "business"
 
     def test_corrupted_pdf_raises_pipeline_error(self, tmp_path: Path) -> None:
         path = tmp_path / "bad.pdf"
         path.write_bytes(b"not a pdf")
         app = make_extraction_app(MockImageClient(), _make_scratchpad(tmp_path))
-        with pytest.raises(PipelineError) as exc_info:
+        with pytest.raises(ToolError) as exc_info:
             asyncio.run(app._tool_manager.call_tool("parse_document", {"file_path": str(path), "mime_type": PDF_MIME}))
-        assert exc_info.value.error_type == "business"
+        assert isinstance(exc_info.value.__cause__, PipelineError)
+        assert exc_info.value.__cause__.error_type == "business"
 
     def test_unsupported_mime_raises_validation_error(self, tmp_path: Path) -> None:
         path = tmp_path / "file.txt"
         path.write_text("some content")
         app = make_extraction_app(MockImageClient(), _make_scratchpad(tmp_path))
-        with pytest.raises(PipelineError) as exc_info:
+        with pytest.raises(ToolError) as exc_info:
             asyncio.run(app._tool_manager.call_tool("parse_document", {"file_path": str(path), "mime_type": "text/plain"}))
-        assert exc_info.value.error_type == "validation"
+        assert isinstance(exc_info.value.__cause__, PipelineError)
+        assert exc_info.value.__cause__.error_type == "validation"
 
 
 class TestStageImages:
@@ -413,8 +418,8 @@ class TestExtractionAgentProcess:
 
     def test_concurrent_agents_independent(self, tmp_path: Path) -> None:
         """Two agents with different metadata produce independent results (BR-E-09)."""
-        agent1, _, _ = self._make_agent(tmp_path)
-        agent2, _, _ = self._make_agent(tmp_path)
+        agent1, _, _ = self._make_agent(tmp_path / "a1")
+        agent2, _, _ = self._make_agent(tmp_path / "a2")
 
         meta1 = _make_metadata(file_id="file-1", name="doc1.docx")
         meta2 = _make_metadata(file_id="file-2", name="doc2.docx")
