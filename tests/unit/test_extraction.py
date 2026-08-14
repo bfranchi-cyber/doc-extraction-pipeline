@@ -10,7 +10,7 @@ import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 
 from pipeline.exceptions import PipelineError
-from pipeline.extraction import ExtractionAgent
+from pipeline.extraction import Extractor
 from pipeline.extraction_server import DOCX_MIME, make_extraction_app
 from pipeline.models import CompactArtifact
 from pipeline.scratchpad import Scratchpad
@@ -107,7 +107,7 @@ class TestExtractionAgentProcess:
     def test_happy_path_returns_compact_artifact(self, tmp_path: Path) -> None:
         path = tmp_path / "report.docx"
         _write_minimal_docx(path, ["Hello world"])
-        agent = ExtractionAgent(_make_scratchpad(tmp_path))
+        agent = Extractor(_make_scratchpad(tmp_path))
 
         artifact = asyncio.run(agent.process(path))
 
@@ -118,7 +118,7 @@ class TestExtractionAgentProcess:
     def test_extracted_text_contains_all_paragraphs(self, tmp_path: Path) -> None:
         path = tmp_path / "multi.docx"
         _write_minimal_docx(path, ["Paragraph one", "Paragraph two", "Paragraph three"])
-        agent = ExtractionAgent(_make_scratchpad(tmp_path))
+        agent = Extractor(_make_scratchpad(tmp_path))
 
         artifact = asyncio.run(agent.process(path))
 
@@ -129,7 +129,7 @@ class TestExtractionAgentProcess:
     def test_corrupted_file_raises_pipeline_error(self, tmp_path: Path) -> None:
         path = tmp_path / "bad.docx"
         path.write_bytes(b"not a docx")
-        agent = ExtractionAgent(_make_scratchpad(tmp_path))
+        agent = Extractor(_make_scratchpad(tmp_path))
 
         with pytest.raises(PipelineError) as exc_info:
             asyncio.run(agent.process(path))
@@ -140,7 +140,7 @@ class TestExtractionAgentProcess:
     def test_document_name_matches_filename(self, tmp_path: Path) -> None:
         path = tmp_path / "my_report.docx"
         _write_minimal_docx(path, ["Content"])
-        agent = ExtractionAgent(_make_scratchpad(tmp_path))
+        agent = Extractor(_make_scratchpad(tmp_path))
 
         artifact = asyncio.run(agent.process(path))
 
