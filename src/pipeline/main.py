@@ -2,12 +2,22 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
+from pipeline.classification import ClassificationAgent
 from pipeline.exceptions import PipelineError
-from pipeline.extraction import ExtractionAgent
+from pipeline.extraction import Extractor
 from pipeline.scratchpad import Scratchpad
+
+
+def _resolve_vault_root(scratchpad: Scratchpad) -> Path | None:
+    vault_path = os.environ.get("OBSIDIAN_VAULT_PATH", "").strip()
+    if not vault_path:
+        scratchpad.warn("OBSIDIAN_VAULT_PATH not set — classification skipped")
+        return None
+    return Path(vault_path)
 
 
 def main() -> None:
@@ -28,7 +38,9 @@ def main() -> None:
     output_root.mkdir(parents=True, exist_ok=True)
 
     scratchpad = Scratchpad(output_root / "scratchpad.jsonl")
-    agent = ExtractionAgent(scratchpad)
+    extractor = Extractor(scratchpad)
+    vault_root = _resolve_vault_root(scratchpad)
+    classifier = ClassificationAgent(vault_root, scratchpad) if vault_root else None
 
     docx_files = sorted(input_root.rglob("*.docx"))
     if not docx_files:
@@ -45,13 +57,17 @@ def main() -> None:
 
             print(f"  Processing: {relative}")
             try:
-                artifact = await agent.process(docx_path)
+                artifact = await extractor.process(docx_path)
                 output_path.write_text(artifact["extracted_text"], encoding="utf-8")
                 scratchpad.info(f"Extracted: {relative}", context={"output": str(output_path)})
                 print(f"  -> {output_path.relative_to(output_root)}")
             except PipelineError as exc:
                 scratchpad.error(f"Failed: {relative}: {exc}", context=exc.to_dict())
                 print(f"  ERROR: {exc}", file=sys.stderr)
+                continue
+
+            if classifier:
+                await classifier.classify(output_path)
 
     asyncio.run(run_all())
     print("Done.")
