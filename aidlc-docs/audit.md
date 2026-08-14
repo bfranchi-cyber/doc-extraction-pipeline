@@ -8,6 +8,68 @@
 
 ---
 
+## Code Generation — Plan Created
+**Timestamp**: 2026-08-14T00:00:00Z
+**AI Response**: Created classification-agent-code-generation-plan.md. 7 steps: rename ExtractionAgent→Extractor (extraction.py, main.py, test_extraction.py), create classification.py, update main.py integration, create test_classification.py (unit + PBT-02/07), create code-summary.md. Awaiting plan approval.
+**Context**: CONSTRUCTION — Code Generation Part 1 (Planning)
+
+---
+
+## Functional Design — Approved
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "approve"
+**AI Response**: Functional design approved. Proceeding to Code Generation.
+**Context**: CONSTRUCTION — Functional Design → Code Generation
+
+---
+
+## Functional Design — Revised (Two-Step Loop)
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "BR02- on a first instance is set to specifically classify. after that it is set to move_to_vault. I do not want verbose output by the model."
+**AI Response**: Redesigned to two-step loop: Step 1 text-only API call (max_tokens:20, no tools) → model outputs only category name. Step 2 code validates and calls move_to_vault as plain Python function. Removed Anthropic tool schema. Updated business-logic-model.md, business-rules.md, domain-entities.md.
+**Context**: CONSTRUCTION — Functional Design revised again → awaiting approval
+
+---
+
+## Functional Design — Revised
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "BR-02 auto is not good. I do not want the agent to call move_to_vault without classifying the file first. We could add a classifier of 'unknown' and use this category as a programmatical block for move_to_vault forcing the agent to write the failure to the scratchpad. BR-06 do not add creation capabilities, this may go on unwanted ways"
+**AI Response**: BR-02: changed tool_choice to any; added "unknown" to enum as programmatic gate — logs WARN, skips move. BR-03: updated to reflect unknown sentinel pattern. BR-06: removed mkdir; destination folder must pre-exist; missing folder → WARN + skip. Updated business-logic-model.md, business-rules.md, domain-entities.md.
+**Context**: CONSTRUCTION — Functional Design revised → awaiting approval
+
+---
+
+## Functional Design — Completed
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: Q1: A (include category descriptions), Q2: B (stem only); "doen" = done
+**AI Response**: Generated business-logic-model.md (prompt design, tool schema, response handling, pipeline integration), business-rules.md (BR-01..BR-09, VR-01..VR-02), domain-entities.md (ClassificationAgent, VaultCategory enum, move_to_vault tool, Extractor rename). Updated plan checkboxes and aidlc-state.md.
+**Context**: CONSTRUCTION — Functional Design COMPLETED → awaiting approval
+
+---
+
+## Workflow Planning — Approved
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "approve"
+**AI Response**: Plan approved. Proceeding to Functional Design.
+**Context**: INCEPTION → CONSTRUCTION — Unit: Classification Agent
+
+---
+
+## Workflow Planning — Completed
+**Timestamp**: 2026-08-14T00:00:00Z
+**AI Response**: Created execution-plan.md. EXECUTE: Functional Design, Code Generation, Build and Test. SKIP: User Stories, Application Design, Units Generation, NFR Requirements, NFR Design, Infrastructure Design. Single unit: Classification Agent. Risk: Low.
+**Context**: INCEPTION — Workflow Planning COMPLETED → awaiting approval
+
+---
+
+## Requirements Analysis — Approved
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "approve"
+**AI Response**: Requirements approved. Proceeding to Workflow Planning.
+**Context**: INCEPTION — Requirements Analysis → Workflow Planning
+
+---
+
 ## Requirements Analysis — Proxy Clarification
 **Timestamp**: 2026-08-14T00:00:00Z
 **User Input**: "there are three env vars for different capabilities of models. LIGHT_MODEL is the one for haiku. MEDIUM_MODEL for sonnet and HEAVY_MODEL for opus" / proxy answer: A (standard ANTHROPIC_BASE_URL)

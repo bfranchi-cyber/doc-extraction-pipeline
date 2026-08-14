@@ -4,7 +4,7 @@
 - **Project Type**: Greenfield
 - **Start Date**: 2026-08-07T00:00:00Z
 - **Scope Change**: 2026-08-14T00:00:00Z — Google Drive / OAuth / PDF / categories / images / manifest dropped. Scope narrowed to local .docx → .md extraction.
-- **Current Stage**: INCEPTION - Requirements Analysis — COMPLETED (Classification Agent feature)
+- **Current Stage**: CONSTRUCTION - Functional Design — COMPLETED (Classification Agent)
 
 ## Workspace State
 - **Existing Code**: Yes
@@ -23,25 +23,44 @@
 | Resiliency Baseline | No | Requirements Analysis |
 | Property-Based Testing | Partial (PBT-02, 07, 08) | Requirements Analysis |
 
-## Stage Progress
+## Stage Progress (Classification Agent — 2026-08-14)
+
+### INCEPTION PHASE
 - [x] Workspace Detection — COMPLETED
-- [x] Reverse Engineering — SKIPPED (greenfield)
-- [x] Requirements Analysis — COMPLETED (updated 2026-08-14 for scope change)
-- [x] User Stories — COMPLETED (historical; Drive-era stories retained as audit trail)
+- [x] Reverse Engineering — SKIPPED (artifacts current)
+- [x] Requirements Analysis — COMPLETED
+- [ ] User Stories — SKIPPED (single developer CLI, requirements clear)
 - [x] Workflow Planning — COMPLETED
-- [x] Application Design — COMPLETED (updated 2026-08-14 for scope change)
-- [x] Units Generation — COMPLETED (updated 2026-08-14 — collapsed to 1 unit)
+- [ ] Application Design — SKIPPED (component boundaries clear)
+- [ ] Units Generation — SKIPPED (single unit)
 
 ### CONSTRUCTION PHASE
-### Unit: Extraction (formerly Unit 3)
-- [x] Functional Design — COMPLETED (updated 2026-08-14 for scope change)
-- [x] Code Generation — COMPLETED (refactored 2026-08-14)
+### Unit: Classification Agent
+- [x] Functional Design — COMPLETED
+- [ ] NFR Requirements — SKIPPED
+- [ ] NFR Design — SKIPPED
+- [ ] Infrastructure Design — SKIPPED
+- [ ] Code Generation — PENDING
 
 ### All Units
-- [x] Build and Test — COMPLETED (2026-08-14)
+- [ ] Build and Test — PENDING
 
 ### OPERATIONS PHASE
 - [ ] Operations — PLACEHOLDER
+
+---
+
+## Previous Iteration Stage Progress (Extraction Pipeline — 2026-08-14)
+- [x] Workspace Detection — COMPLETED
+- [x] Reverse Engineering — SKIPPED (greenfield)
+- [x] Requirements Analysis — COMPLETED
+- [x] User Stories — COMPLETED (historical; Drive-era stories retained as audit trail)
+- [x] Workflow Planning — COMPLETED
+- [x] Application Design — COMPLETED
+- [x] Units Generation — COMPLETED (collapsed to 1 unit)
+- [x] Functional Design — COMPLETED
+- [x] Code Generation — COMPLETED
+- [x] Build and Test — COMPLETED
 
 ## Dropped Units (scope change 2026-08-14)
 - Unit 1: Foundation — DROPPED (config/manifest/Drive types removed)
