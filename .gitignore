@@ -24,3 +24,7 @@ build/
 .venv/
 venv/
 env/
+
+
+#Extracted Documents
+output/
