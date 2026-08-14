@@ -1,5 +1,6 @@
 # Runtime config — contains local paths and secrets
 config.toml
+.env
 
 # Python
 __pycache__/
