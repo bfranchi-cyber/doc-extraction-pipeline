@@ -1,5 +1,37 @@
 # AI-DLC Audit Log
 
+## Session Resume
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "start aidlc" → session continuity answer: "A" (Start a new development request; user typed "d" then clarified "actually is a, d was short for done")
+**AI Response**: Detected existing project. Loaded aidlc-state.md. User chose A — new development request. Awaiting request description to begin Workspace Detection.
+**Context**: Session start — awaiting new request
+
+---
+
+## Requirements Analysis — Proxy Clarification
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "there are three env vars for different capabilities of models. LIGHT_MODEL is the one for haiku. MEDIUM_MODEL for sonnet and HEAVY_MODEL for opus" / proxy answer: A (standard ANTHROPIC_BASE_URL)
+**AI Response**: Updated FR-02 (LIGHT_MODEL, ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY) and NFR-01. No contradictions. Requirements finalised.
+**Context**: INCEPTION — Requirements Analysis finalised
+
+---
+
+## Requirements Analysis — Classification Agent
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: Answers to requirement-verification-questions.md — Q1:B (env var), Q2:A (integrated), Q3:A (leave+warn), Q4:C (500 chars), Q5:C (rename to Extractor)
+**AI Response**: No contradictions. Generated requirements.md. FR-01 rename, FR-02 ClassificationAgent, FR-03 classification logic, FR-04 move_to_vault tool, FR-05 unclassifiable warning, FR-06 pipeline integration, FR-07 missing vault path handling. Updated aidlc-state.md.
+**Context**: INCEPTION — Requirements Analysis COMPLETED
+
+---
+
+## Workspace Detection
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "We have a functioning extraction tool, but it is wrongly named as an agent. Our next feature is an classification agent. This agent should use a light model like claude haiku 4.5. The categories that the agent should classify files are the names of folders inside my obsidian vault. [Architecture, CI&T[for corporate knowledge], Cloud, Coding, ML&AI]. After the agent classifies the file it should invoke a tool to move the file from our output folder to the obsidian folder that matches the classification."
+**AI Response**: Brownfield project detected. Existing code found: src/pipeline/ (extraction.py, main.py, models.py, scratchpad.py, exceptions.py, extraction_server.py). State file exists and is current. RE artifacts exist — skipping RE. Proceeding to Requirements Analysis. Creating clarifying questions file.
+**Context**: INCEPTION — Workspace Detection → Requirements Analysis
+
+---
+
 ## Scope Change — Refactor to Local DOCX → Markdown
 **Timestamp**: 2026-08-14T00:00:00Z
 **User Input**: "It is better to refactor this project. Lets narrow down our scope. Im not able to create a Oauth CLient and there is no GCP available. Lets ditch the whole Gdrive flow and ingestion steps for a next iteration on this project; Im not going to extract any pdf files. Lets just extract the text from local docx files and transform them into .md. Analyse what needs to be refactored."

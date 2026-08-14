@@ -1,26 +1,17 @@
-# Session Continuity — What Would You Like to Work On?
+# Session Continuity Questions
 
-**Welcome back!** Your CONSTRUCTION phase is in progress. Units 1, 2, and 3 are complete. Next up is Unit 4: Analysis.
-
-## Current Status
-- [x] Unit 1: Foundation — COMPLETED
-- [x] Unit 2: Ingestion — COMPLETED
-- [x] Unit 3: Extraction — COMPLETED
-- [ ] Unit 4: Analysis — PENDING
-- [ ] Unit 5: Export + Coordinator — PENDING
-- [ ] Build and Test — PENDING
+Your project (local `.docx` → `.md` extraction) has completed all planned construction work.
+Please choose how you'd like to continue.
 
 ## Question 1
 What would you like to work on today?
 
-A) Continue where we left off — begin Unit 4: Analysis (Functional Design)
+A) Start a new development request (new feature, enhancement, or change to the existing pipeline)
 
-B) Skip directly to Unit 5: Export + Coordinator (Functional Design)
+B) Review or update existing documentation or design artifacts
 
-C) Skip all remaining Functional Designs and go straight to Code Generation for Unit 4
+C) Run or re-verify tests and build instructions
 
-D) Jump to Build and Test (skip remaining units)
+D) Other (please describe after [Answer]: tag below)
 
-E) Other (please describe after [Answer]: tag below)
-
-[Answer]: 
+[Answer]: A

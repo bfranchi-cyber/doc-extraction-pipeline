@@ -1,111 +1,87 @@
-# Requirements Document — Extraction Pipeline (Revised 2026-08-14)
+# Requirements — Classification Agent
 
-> **Scope change**: Original scope included Google Drive integration, OAuth, PDF extraction,
-> category classification, image handling, and Obsidian vault export. All of those are deferred
-> to a future iteration. The current scope is narrowed to local .docx → .md extraction only.
-> The original requirements are preserved in git history.
+## Intent Analysis
 
----
-
-## Intent Analysis Summary
-
-- **User Request**: Extract text from local .docx files and convert them to Markdown files.
-- **Request Type**: Brownfield (existing extraction codebase, scope-narrowed refactor)
-- **Scope**: Single-agent pipeline — scan a local folder, extract text from .docx files via Claude, write .md output files mirroring the input folder structure.
-- **Complexity**: Low — single agent, local file I/O, no external APIs beyond Claude.
+| Field | Value |
+|---|---|
+| **User Request** | Add a classification agent that uses Claude Haiku 4.5 to classify extracted .md files into Obsidian vault categories and move them to the matching folder. Also rename ExtractionAgent to Extractor. |
+| **Request Type** | New Feature + Refactoring |
+| **Scope Estimate** | Multiple Components |
+| **Complexity Estimate** | Moderate |
 
 ---
 
 ## Functional Requirements
 
-### FR-01: Input Discovery
-- The pipeline accepts an `--input` directory path and recursively discovers all `.docx` files within it, including nested subdirectories.
-- No manual file list — discovery is automatic via `rglob("*.docx")`.
+### FR-01: Rename ExtractionAgent → Extractor
+- `ExtractionAgent` in `src/pipeline/extraction.py` is renamed to `Extractor`
+- All references updated: `main.py`, `extraction_server.py`, any tests
+- No behaviour change — pure rename
 
-### FR-02: Output Structure
-- The pipeline accepts an `--output` directory path.
-- For each discovered `.docx` file, a corresponding `.md` file is written to `--output`, preserving the relative subdirectory structure of the input.
-- Example: `input/legal/contract.docx` → `output/legal/contract.md`
-- Output directories are created automatically as needed.
+### FR-02: ClassificationAgent
+- New class `ClassificationAgent` in `src/pipeline/classification.py`
+- Uses the **Anthropic SDK** with a **corporate proxy**
+- Model name read from env var **`LIGHT_MODEL`** at runtime (Haiku variant)
+- Proxy URL sourced automatically from **`ANTHROPIC_BASE_URL`** (SDK standard) and API key from **`ANTHROPIC_API_KEY`** — no custom client wiring needed
+- Reads the Obsidian vault root path from env var `OBSIDIAN_VAULT_PATH`
+- Accepts a `.md` file path as input
 
-### FR-03: Supported Input Formats
-- `.docx` only. All other file types are ignored silently.
+### FR-03: Classification Logic
+- Sends the **file name + first 500 characters** of the .md file content to the model
+- Claude must classify the document into exactly one of:
+  - `Architecture`
+  - `CI&T`
+  - `Cloud`
+  - `Coding`
+  - `ML&AI`
+- Classification is performed via the Anthropic tool-use API: the model calls a `move_to_vault` tool with the chosen category
 
-### FR-04: Text Extraction
-- Text is extracted from each `.docx` file using the `parse_document` MCP tool (backed by `mammoth`).
-- The extracted text is written verbatim to the output `.md` file — no summarization, formatting, or paraphrasing.
+### FR-04: move_to_vault Tool
+- Tool name: `move_to_vault`
+- Input: `category` (string, one of the five valid categories)
+- Behaviour: moves the .md file from the output folder to `<OBSIDIAN_VAULT_PATH>/<category>/`
+- Creates the destination folder if it does not exist
 
-### FR-05: Extraction Agent
-- A single `ExtractionAgent` processes files sequentially.
-- Uses Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) as the extraction model.
-- The agent calls `parse_document` via MCP and returns a `CompactArtifact` with `document_name` and `extracted_text`.
+### FR-05: Unclassifiable Files
+- If Claude Haiku does not call `move_to_vault` (low confidence or error), the file is **left in the output folder**
+- A `WARN`-level entry is written to the Scratchpad log
 
-### FR-06: Error Handling
-- **Corrupted or unreadable files**: logged to scratchpad, pipeline continues with next file.
-- **Claude API rate limits**: one retry after `retry-after` seconds; if second attempt also fails, error is logged and pipeline continues.
-- **Scratchpad log**: written to `{output}/scratchpad.jsonl` — one JSONL entry per event.
+### FR-06: Pipeline Integration
+- Classification runs automatically after each file is extracted (integrated into `main.py`)
+- Flow per document: `.docx` → extract to `.md` in output folder → classify → move to vault
+- If extraction fails, classification is skipped for that file
 
-### FR-07: Semantic Preservation
-- The pipeline must not alter the semantic content of documents.
-- No summarization, paraphrasing, or reformatting at this stage.
+### FR-07: Missing Vault Path
+- If `OBSIDIAN_VAULT_PATH` is not set, log a `WARN` via Scratchpad and skip classification for all files (extraction still completes normally)
 
 ---
 
 ## Non-Functional Requirements
 
-### NFR-01: No External Service Dependencies
-- No Google Drive, no OAuth, no GCP project required.
-- Only dependency beyond stdlib: `anthropic[mcp]`, `mcp`, `mammoth`.
-- `ANTHROPIC_API_KEY` must be set in the environment.
+### NFR-01: Model
+- Model name sourced from `LIGHT_MODEL` env var — lightweight, low latency, low cost
+- No model name hardcoded in source code
+- Three-tier naming convention in project: `LIGHT_MODEL` (Haiku), `MEDIUM_MODEL` (Sonnet), `HEAVY_MODEL` (Opus)
 
-### NFR-02: Platform
-- Runs on Windows 11 (and any platform with Python 3.11+).
-- Invoked from the terminal: `python -m pipeline.main --input ./docs --output ./output`
+### NFR-02: Token Efficiency
+- Only first 500 characters of the document are sent to the model
 
-### NFR-03: Property-Based Testing (Partial Enforcement)
-- **Hypothesis** is used for property-based tests.
-- Enforcement scope: PBT-02 (round-trip), PBT-07 (generator quality), PBT-08 (shrinking).
+### NFR-03: Vault Path Configuration
+- Vault root path sourced exclusively from `OBSIDIAN_VAULT_PATH` environment variable
 
----
+### NFR-04: Error Isolation
+- A classification failure must never prevent the next file from being processed
+- Extraction output is preserved on classification failure
 
-## Architecture
-
-```
---input directory
-     |
-     | rglob("*.docx")
-     v
-+---------------------------+
-|  main.py                  |  discovers files, iterates
-+---------------------------+
-     |  docx_path (Path)
-     v
-+---------------------------+
-|  ExtractionAgent          |  Claude Haiku + MCP
-|  - parse_document tool    |  (mammoth)
-+---------------------------+
-     |  CompactArtifact
-     |  {document_name, extracted_text}
-     v
-+---------------------------+
-|  main.py                  |  writes {stem}.md to --output
-+---------------------------+
-     |
-     v
---output directory (mirrored structure)
-```
+### NFR-05: Testability
+- `ClassificationAgent` must be testable with a mock Anthropic client
+- PBT rules PBT-02, PBT-07, PBT-08 apply (existing project configuration)
 
 ---
 
-## Key Decisions
+## Out of Scope
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Input | Local directory, recursive | No GCP/OAuth available |
-| Format | .docx only | PDF dropped — no pymupdf install path on this environment |
-| Output | .md files, mirrored structure | Simple, predictable, no vault dependency |
-| Parser | mammoth | Pure Python, no native DLLs, always installable |
-| Model | Claude Haiku 4.5 | Fast, low cost, sufficient for verbatim extraction |
-| Drive / OAuth | Deferred | No GCP project access; next iteration |
-| Categories / Analysis | Deferred | Out of scope for this iteration |
-| Images | Deferred | Out of scope for this iteration |
+- PDF, Google Drive, or any non-.docx input formats
+- Re-classification of already-moved files
+- Batch undo / rollback of moves
+- GUI or web interface
