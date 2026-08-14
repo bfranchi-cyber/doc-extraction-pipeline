@@ -1,5 +1,13 @@
 # AI-DLC Audit Log
 
+## Scope Change — Refactor to Local DOCX → Markdown
+**Timestamp**: 2026-08-14T00:00:00Z
+**User Input**: "It is better to refactor this project. Lets narrow down our scope. Im not able to create a Oauth CLient and there is no GCP available. Lets ditch the whole Gdrive flow and ingestion steps for a next iteration on this project; Im not going to extract any pdf files. Lets just extract the text from local docx files and transform them into .md. Analyse what needs to be refactored."
+**AI Response**: Analysed full codebase. Proposed refactor plan covering: delete ingestion/manifest/config, simplify extraction to local DOCX only, create main.py CLI entry point with recursive --input discovery. User approved. Executed refactor: deleted ingestion.py, manifest.py, config.py, 5 test files; rewrote exceptions.py, models.py, extraction_server.py, extraction.py; rewrote test_extraction.py, test_extraction_pbt.py; updated pyproject.toml; created main.py. 14/14 tests green. Updated aidlc-state.md, requirements.md, application-design.md, unit-of-work.md, business-rules.md, domain-entities.md.
+**Context**: CONSTRUCTION — scope change decision and execution
+
+---
+
 ## Session Resume
 **Timestamp**: 2026-08-13T12:00:00Z
 **User Input**: "start ai dlc"

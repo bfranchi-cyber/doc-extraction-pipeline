@@ -3,10 +3,11 @@
 ## Project Information
 - **Project Type**: Greenfield
 - **Start Date**: 2026-08-07T00:00:00Z
-- **Current Stage**: INCEPTION - Workspace Detection
+- **Scope Change**: 2026-08-14T00:00:00Z — Google Drive / OAuth / PDF / categories / images / manifest dropped. Scope narrowed to local .docx → .md extraction.
+- **Current Stage**: CONSTRUCTION - Extraction — COMPLETED
 
 ## Workspace State
-- **Existing Code**: No (only use-case spec and CLAUDE.md present)
+- **Existing Code**: Yes
 - **Reverse Engineering Needed**: No
 - **Workspace Root**: c:\Users\bfranchi\Desktop\projetos\docs-extraction
 
@@ -20,38 +21,30 @@
 |---|---|---|
 | Security Baseline | No | Requirements Analysis |
 | Resiliency Baseline | No | Requirements Analysis |
-| Property-Based Testing | Partial (PBT-02, 03, 07, 08, 09) | Requirements Analysis |
+| Property-Based Testing | Partial (PBT-02, 07, 08) | Requirements Analysis |
 
 ## Stage Progress
 - [x] Workspace Detection — COMPLETED
 - [x] Reverse Engineering — SKIPPED (greenfield)
-- [x] Requirements Analysis — COMPLETED
-- [x] User Stories — COMPLETED
+- [x] Requirements Analysis — COMPLETED (updated 2026-08-14 for scope change)
+- [x] User Stories — COMPLETED (historical; Drive-era stories retained as audit trail)
 - [x] Workflow Planning — COMPLETED
-- [x] Application Design — COMPLETED
-- [x] Units Generation — COMPLETED
+- [x] Application Design — COMPLETED (updated 2026-08-14 for scope change)
+- [x] Units Generation — COMPLETED (updated 2026-08-14 — collapsed to 1 unit)
 
 ### CONSTRUCTION PHASE
-### Unit 1: Foundation
-- [x] Functional Design — COMPLETED
-- [x] NFR Requirements — COMPLETED
-- [x] NFR Design — COMPLETED
-- [x] Infrastructure Design — COMPLETED
-- [x] Code Generation — COMPLETED
-### Unit 2: Ingestion
-- [x] Functional Design — COMPLETED
-- [x] Code Generation — COMPLETED
-### Unit 3: Extraction
-- [x] Functional Design — COMPLETED
-- [x] Code Generation — COMPLETED
-### Unit 4: Analysis
-- [ ] Functional Design — PENDING
-- [ ] Code Generation — PENDING
-### Unit 5: Export + Coordinator
-- [ ] Functional Design — PENDING
-- [ ] Code Generation — PENDING
+### Unit: Extraction (formerly Unit 3)
+- [x] Functional Design — COMPLETED (updated 2026-08-14 for scope change)
+- [x] Code Generation — COMPLETED (refactored 2026-08-14)
+
 ### All Units
 - [ ] Build and Test — PENDING
 
 ### OPERATIONS PHASE
 - [ ] Operations — PLACEHOLDER
+
+## Dropped Units (scope change 2026-08-14)
+- Unit 1: Foundation — DROPPED (config/manifest/Drive types removed)
+- Unit 2: Ingestion — DROPPED (no Drive)
+- Unit 4: Analysis — DROPPED (out of scope for this iteration)
+- Unit 5: Export + Coordinator — DROPPED (out of scope for this iteration)
