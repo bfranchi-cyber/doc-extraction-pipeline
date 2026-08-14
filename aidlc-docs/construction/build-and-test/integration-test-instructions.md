@@ -1,141 +1,72 @@
 # Integration Test Instructions
 
 ## Purpose
+Test the full extraction → classification → move pipeline end-to-end using a real `.docx` file and the live Anthropic API.
 
-Validate the full pipeline end-to-end: CLI entry point → `ExtractionAgent` → mammoth → `.md` output files, including folder mirroring, scratchpad logging, and error handling for bad files.
+## Prerequisites
+- All environment variables set (see `build-instructions.md`)
+- `OBSIDIAN_VAULT_PATH` set to a test vault with the five category folders pre-created
+- At least one `.docx` test file available
 
-There is a single unit (Extraction), so "integration" here means CLI-level testing of `main.py` against real `.docx` files on disk — not service-to-service integration.
+## Setup
 
-No external services, databases, or network calls are required.
+### 1. Create a test vault
 
----
-
-## Scenario 1: Single .docx file — happy path
-
-**Description**: Verify that a valid `.docx` file produces a `.md` output with the expected text.
-
-**Setup**:
-```powershell
-# Create a test directory with one .docx (use any real .docx you have)
-$testInput = "$env:TEMP\docs-extraction-test\input"
-$testOutput = "$env:TEMP\docs-extraction-test\output"
-New-Item -ItemType Directory -Force $testInput, $testOutput | Out-Null
-# Copy a known .docx into $testInput
-Copy-Item "path\to\sample.docx" "$testInput\sample.docx"
+```bash
+mkdir -p /path/to/test-vault/Architecture
+mkdir -p /path/to/test-vault/CI&T
+mkdir -p /path/to/test-vault/Cloud
+mkdir -p /path/to/test-vault/Coding
+mkdir -p /path/to/test-vault/ML&AI
 ```
 
-**Execution**:
-```powershell
-.venv\Scripts\python -m pipeline.main --input $testInput --output $testOutput
+### 2. Set environment variables
+
+```bash
+export OBSIDIAN_VAULT_PATH=/path/to/test-vault
+export LIGHT_MODEL=<your-haiku-model-name>
+export ANTHROPIC_API_KEY=<your-key>
+export ANTHROPIC_BASE_URL=<your-proxy-url>
 ```
 
-**Expected results**:
-- Exit with no errors printed to stderr
-- `$testOutput\sample.md` exists and contains the document text
-- `$testOutput\scratchpad.jsonl` contains one `INFO` entry for `sample.docx`
+### 3. Prepare test input
 
-**Cleanup**:
-```powershell
-Remove-Item -Recurse -Force "$env:TEMP\docs-extraction-test"
+Place one or more `.docx` files in a test input folder, e.g. `/tmp/test-input/`.
+
+## Scenario 1: Full Pipeline — Extract + Classify + Move
+
+```bash
+uv run docs-extraction --input /tmp/test-input --output /tmp/test-output
 ```
 
----
+**Expected results:**
+- `.md` files are written to `/tmp/test-output/`
+- Each `.md` file is moved to the matching vault folder (e.g. `$OBSIDIAN_VAULT_PATH/Coding/my-doc.md`)
+- `scratchpad.jsonl` in `/tmp/test-output/` contains `INFO` entries for classified files
+- No `.md` files remain in `/tmp/test-output/` for successfully classified documents
 
-## Scenario 2: Nested folder structure — mirroring
+## Scenario 2: Missing Vault Path — Classification Skipped
 
-**Description**: Verify that subdirectory structure under `--input` is mirrored in `--output`.
-
-**Setup**:
-```powershell
-$testInput = "$env:TEMP\docs-extraction-mirror\input"
-New-Item -ItemType Directory -Force "$testInput\subdir" | Out-Null
-Copy-Item "path\to\doc1.docx" "$testInput\doc1.docx"
-Copy-Item "path\to\doc2.docx" "$testInput\subdir\doc2.docx"
-$testOutput = "$env:TEMP\docs-extraction-mirror\output"
+```bash
+unset OBSIDIAN_VAULT_PATH
+uv run docs-extraction --input /tmp/test-input --output /tmp/test-output
 ```
 
-**Execution**:
-```powershell
-.venv\Scripts\python -m pipeline.main --input $testInput --output $testOutput
+**Expected results:**
+- `.md` files are written and remain in `/tmp/test-output/`
+- `scratchpad.jsonl` contains a `WARN` entry: `OBSIDIAN_VAULT_PATH not set`
+- No files moved
+
+## Scenario 3: Unclassifiable Document
+
+Use a `.docx` containing ambiguous or non-technical content (e.g. a recipe or poem).
+
+**Expected results:**
+- `.md` file stays in output folder
+- `scratchpad.jsonl` contains `WARN` entry: `Unclassifiable: <filename>`
+
+## Cleanup
+
+```bash
+rm -rf /tmp/test-output
 ```
-
-**Expected results**:
-- `$testOutput\doc1.md` exists
-- `$testOutput\subdir\doc2.md` exists (subdirectory created automatically)
-- Both `.md` files contain the expected text
-
-**Cleanup**:
-```powershell
-Remove-Item -Recurse -Force "$env:TEMP\docs-extraction-mirror"
-```
-
----
-
-## Scenario 3: Corrupted .docx — error handling
-
-**Description**: Verify that a corrupted file logs an error and does not crash the pipeline (other files in the same run continue processing).
-
-**Setup**:
-```powershell
-$testInput = "$env:TEMP\docs-extraction-error\input"
-New-Item -ItemType Directory -Force $testInput | Out-Null
-# Write a fake (invalid) .docx
-[System.IO.File]::WriteAllBytes("$testInput\bad.docx", [byte[]](0x00, 0x01, 0x02))
-Copy-Item "path\to\good.docx" "$testInput\good.docx"
-$testOutput = "$env:TEMP\docs-extraction-error\output"
-```
-
-**Execution**:
-```powershell
-.venv\Scripts\python -m pipeline.main --input $testInput --output $testOutput
-```
-
-**Expected results**:
-- `$testOutput\good.md` exists and contains text
-- `$testOutput\bad.md` does NOT exist
-- An `ERROR:` line is printed to stderr for `bad.docx`
-- `$testOutput\scratchpad.jsonl` contains an `ERROR` entry for `bad.docx`
-
-**Cleanup**:
-```powershell
-Remove-Item -Recurse -Force "$env:TEMP\docs-extraction-error"
-```
-
----
-
-## Scenario 4: Real documents (smoke test against actual corpus)
-
-**Description**: Run against the full `estudos` corpus used during development (39 documents).
-
-**Prerequisite**: Load `.env` into the current PowerShell session (needed only if `ANTHROPIC_*` vars are required at runtime — currently mammoth does not need them, but future Analysis stage will).
-
-```powershell
-Get-Content .env | ForEach-Object {
-    if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
-        [System.Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
-    }
-}
-```
-
-**Execution**:
-```powershell
-.venv\Scripts\python -m pipeline.main `
-    --input "$env:USERPROFILE\Documents\estudos" `
-    --output output
-```
-
-**Expected results**:
-- All `.docx` files found and processed (count printed at start)
-- No `ERROR:` lines in stderr
-- `output/scratchpad.jsonl` contains one `INFO` entry per file
-- `output/` mirrors the `estudos` folder structure with `.md` files
-
----
-
-## No External Services Required
-
-This pipeline uses only:
-- Local filesystem reads/writes
-- `mammoth` (pure Python, no network)
-
-No database, Docker, or external API is required for integration testing. The `ANTHROPIC_*` environment variables are loaded but not called until the Analysis stage is implemented.

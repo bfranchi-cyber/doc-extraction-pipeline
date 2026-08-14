@@ -9,13 +9,13 @@
 
 ## Steps
 
-- [ ] Step 1: Rename `ExtractionAgent` → `Extractor` in `src/pipeline/extraction.py`
-- [ ] Step 2: Update `src/pipeline/main.py` — rename import and usage of `ExtractionAgent`
-- [ ] Step 3: Update `tests/unit/test_extraction.py` — rename import and all usages of `ExtractionAgent`
-- [ ] Step 4: Create `src/pipeline/classification.py` — `ClassificationAgent` class
-- [ ] Step 5: Update `src/pipeline/main.py` — integrate `ClassificationAgent` and `resolve_vault_root`
-- [ ] Step 6: Create `tests/unit/test_classification.py` — unit + PBT tests
-- [ ] Step 7: Create `aidlc-docs/construction/classification-agent/code/code-summary.md`
+- [x] Step 1: Rename `ExtractionAgent` → `Extractor` in `src/pipeline/extraction.py`
+- [x] Step 2: Update `src/pipeline/main.py` — rename import and usage of `ExtractionAgent`
+- [x] Step 3: Update `tests/unit/test_extraction.py` — rename import and all usages of `ExtractionAgent`
+- [x] Step 4: Create `src/pipeline/classification.py` — `ClassificationAgent` class
+- [x] Step 5: Update `src/pipeline/main.py` — integrate `ClassificationAgent` and `resolve_vault_root`
+- [x] Step 6: Create `tests/unit/test_classification.py` — unit + PBT tests
+- [x] Step 7: Create `aidlc-docs/construction/classification-agent/code/code-summary.md`
 
 ---
 
