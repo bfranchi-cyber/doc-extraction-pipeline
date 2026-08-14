@@ -31,17 +31,11 @@ def make_extraction_app(image_client: ImageClient, scratchpad: Scratchpad) -> Fa
         path = Path(file_path)
         if mime_type == DOCX_MIME:
             try:
-                import docx  # python-docx
+                import mammoth
 
-                doc = docx.Document(str(path))
-                parts: list[str] = []
-                for para in doc.paragraphs:
-                    parts.append(para.text)
-                for table in doc.tables:
-                    for row in table.rows:
-                        for cell in row.cells:
-                            parts.append(cell.text)
-                return "\n".join(parts).strip()
+                with open(path, "rb") as f:
+                    result = mammoth.extract_raw_text(f)
+                return result.value.strip()
             except Exception as exc:
                 raise PipelineError(
                     error_type="business",
@@ -52,10 +46,10 @@ def make_extraction_app(image_client: ImageClient, scratchpad: Scratchpad) -> Fa
 
         if mime_type == PDF_MIME:
             try:
-                import fitz  # pymupdf
+                import pypdf
 
-                doc = fitz.open(str(path))
-                pages = [doc[i].get_text() for i in range(len(doc))]
+                reader = pypdf.PdfReader(str(path))
+                pages = [page.extract_text() or "" for page in reader.pages]
                 return "\n".join(pages).strip()
             except Exception as exc:
                 raise PipelineError(

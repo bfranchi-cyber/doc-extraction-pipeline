@@ -94,21 +94,97 @@ class MockImageClient:
 
 
 def _write_minimal_docx(path: Path, paragraphs: list[str]) -> None:
-    import docx
+    """Write a valid .docx using only stdlib (zipfile + xml)."""
+    import zipfile
 
-    doc = docx.Document()
-    for text in paragraphs:
-        doc.add_paragraph(text)
-    doc.save(str(path))
+    body_xml = "".join(
+        f'<w:p><w:r><w:t xml:space="preserve">{p}</w:t></w:r></w:p>'
+        for p in paragraphs
+    )
+    document_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"'
+        ' xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"<w:body>{body_xml}<w:sectPr/></w:body></w:document>"
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
+    )
+    content_types_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/word/document.xml"'
+        ' ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        "</Types>"
+    )
+    word_rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
+    )
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", content_types_xml)
+        z.writestr("_rels/.rels", rels_xml)
+        z.writestr("word/_rels/document.xml.rels", word_rels_xml)
+        z.writestr("word/document.xml", document_xml)
 
 
 def _write_minimal_pdf(path: Path, text: str = "Hello PDF") -> None:
-    import fitz
+    """Write a minimal valid PDF using only stdlib — pypdf can read it."""
+    import io
+    import struct
 
-    doc = fitz.open()
-    page = doc.new_page()
-    page.insert_text((72, 72), text)
-    doc.save(str(path))
+    # Build a minimal PDF with one page containing the given text.
+    # The stream uses PDF text operators: BT (begin text), Tf (font), Td (move), Tj (show), ET.
+    stream_content = (
+        f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET"
+    ).encode("latin-1")
+    stream_len = len(stream_content)
+
+    objects: list[bytes] = []
+
+    # obj 1: catalog
+    objects.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+    # obj 2: pages
+    objects.append(b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+    # obj 3: page
+    objects.append(
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R"
+        b" /MediaBox [0 0 612 792]"
+        b" /Contents 4 0 R"
+        b" /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+    )
+    # obj 4: content stream
+    objects.append(
+        f"4 0 obj\n<< /Length {stream_len} >>\nstream\n".encode()
+        + stream_content
+        + b"\nendstream\nendobj\n"
+    )
+    # obj 5: font
+    objects.append(
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+    )
+
+    header = b"%PDF-1.4\n"
+    body = io.BytesIO()
+    body.write(header)
+    offsets: list[int] = []
+    for obj in objects:
+        offsets.append(body.tell())
+        body.write(obj)
+
+    xref_offset = body.tell()
+    n = len(objects)
+    body.write(f"xref\n0 {n + 1}\n".encode())
+    body.write(b"0000000000 65535 f \n")
+    for off in offsets:
+        body.write(f"{off:010d} 00000 n \n".encode())
+    body.write(
+        f"trailer\n<< /Size {n + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n".encode()
+    )
+    path.write_bytes(body.getvalue())
 
 
 # ---------------------------------------------------------------------------
