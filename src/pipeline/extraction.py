@@ -7,7 +7,7 @@ from pipeline.models import CompactArtifact
 from pipeline.scratchpad import Scratchpad
 
 
-class ExtractionAgent:
+class Extractor:
     def __init__(self, scratchpad: Scratchpad) -> None:
         self._scratchpad = scratchpad
 
