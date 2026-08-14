@@ -2,17 +2,15 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import zipfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mcp.server.fastmcp.exceptions import ToolError
 
 from pipeline.exceptions import PipelineError
-from pipeline.extraction import ExtractionAgent, _build_prompt, _parse_final_message
+from pipeline.extraction import ExtractionAgent
 from pipeline.extraction_server import DOCX_MIME, make_extraction_app
 from pipeline.models import CompactArtifact
 from pipeline.scratchpad import Scratchpad
@@ -101,106 +99,49 @@ class TestParseDocument:
 
 
 # ---------------------------------------------------------------------------
-# Tests — ExtractionAgent.process() with mocked tool_runner
+# Tests — ExtractionAgent.process() via mammoth (no mocking needed)
 # ---------------------------------------------------------------------------
 
 
-def _make_final_message(extracted_text: str):
-    payload = json.dumps({"extracted_text": extracted_text})
-    text_block = MagicMock()
-    text_block.text = payload
-    text_block.type = "text"
-    msg = MagicMock()
-    msg.content = [text_block]
-    return msg
-
-
 class TestExtractionAgentProcess:
-    def _run_with_mock_runner(self, agent, docx_path, final_message):
-        mock_runner = MagicMock()
-        mock_runner.until_done = AsyncMock(return_value=final_message)
-
-        with patch.object(agent._client.beta.messages, "tool_runner", return_value=mock_runner):
-            with patch("pipeline.extraction.stdio_client") as mock_stdio:
-                mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(AsyncMock(), AsyncMock()))
-                mock_stdio.return_value.__aexit__ = AsyncMock(return_value=False)
-                with patch("pipeline.extraction.ClientSession") as mock_session_cls:
-                    mock_session = AsyncMock()
-                    mock_session.list_tools = AsyncMock(return_value=MagicMock(tools=[]))
-                    mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-                    mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-                    return asyncio.run(agent.process(docx_path))
-
     def test_happy_path_returns_compact_artifact(self, tmp_path: Path) -> None:
+        path = tmp_path / "report.docx"
+        _write_minimal_docx(path, ["Hello world"])
         agent = ExtractionAgent(_make_scratchpad(tmp_path))
-        docx_path = tmp_path / "report.docx"
-        docx_path.write_bytes(b"")
-        final_msg = _make_final_message("Extracted content here")
 
-        artifact = self._run_with_mock_runner(agent, docx_path, final_msg)
+        artifact = asyncio.run(agent.process(path))
 
         assert isinstance(artifact, dict)
         assert artifact["document_name"] == "report.docx"
-        assert artifact["extracted_text"] == "Extracted content here"
+        assert "Hello world" in artifact["extracted_text"]
 
-    def test_rate_limit_then_success(self, tmp_path: Path) -> None:
-        import anthropic as _anthropic
-
+    def test_extracted_text_contains_all_paragraphs(self, tmp_path: Path) -> None:
+        path = tmp_path / "multi.docx"
+        _write_minimal_docx(path, ["Paragraph one", "Paragraph two", "Paragraph three"])
         agent = ExtractionAgent(_make_scratchpad(tmp_path))
-        docx_path = tmp_path / "report.docx"
-        docx_path.write_bytes(b"")
-        final_msg = _make_final_message("Content")
 
-        mock_runner_fail = MagicMock()
-        mock_runner_fail.until_done = AsyncMock(
-            side_effect=_anthropic.RateLimitError.__new__(_anthropic.RateLimitError)
-        )
-        mock_runner_ok = MagicMock()
-        mock_runner_ok.until_done = AsyncMock(return_value=final_msg)
-        call_count = {"n": 0}
+        artifact = asyncio.run(agent.process(path))
 
-        def tool_runner_factory(**kwargs):
-            call_count["n"] += 1
-            return mock_runner_fail if call_count["n"] == 1 else mock_runner_ok
+        assert "Paragraph one" in artifact["extracted_text"]
+        assert "Paragraph two" in artifact["extracted_text"]
+        assert "Paragraph three" in artifact["extracted_text"]
 
-        with patch.object(agent._client.beta.messages, "tool_runner", side_effect=tool_runner_factory):
-            with patch("pipeline.extraction.stdio_client") as mock_stdio:
-                mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(AsyncMock(), AsyncMock()))
-                mock_stdio.return_value.__aexit__ = AsyncMock(return_value=False)
-                with patch("pipeline.extraction.ClientSession") as mock_session_cls:
-                    mock_session = AsyncMock()
-                    mock_session.list_tools = AsyncMock(return_value=MagicMock(tools=[]))
-                    mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-                    mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-                    with patch("pipeline.extraction.asyncio.sleep", new_callable=AsyncMock):
-                        artifact = asyncio.run(agent.process(docx_path))
-
-        assert artifact["extracted_text"] == "Content"
-
-    def test_rate_limit_twice_raises_transient(self, tmp_path: Path) -> None:
-        import anthropic as _anthropic
-
+    def test_corrupted_file_raises_pipeline_error(self, tmp_path: Path) -> None:
+        path = tmp_path / "bad.docx"
+        path.write_bytes(b"not a docx")
         agent = ExtractionAgent(_make_scratchpad(tmp_path))
-        docx_path = tmp_path / "report.docx"
-        docx_path.write_bytes(b"")
 
-        mock_runner = MagicMock()
-        mock_runner.until_done = AsyncMock(
-            side_effect=_anthropic.RateLimitError.__new__(_anthropic.RateLimitError)
-        )
+        with pytest.raises(PipelineError) as exc_info:
+            asyncio.run(agent.process(path))
 
-        with patch.object(agent._client.beta.messages, "tool_runner", return_value=mock_runner):
-            with patch("pipeline.extraction.stdio_client") as mock_stdio:
-                mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(AsyncMock(), AsyncMock()))
-                mock_stdio.return_value.__aexit__ = AsyncMock(return_value=False)
-                with patch("pipeline.extraction.ClientSession") as mock_session_cls:
-                    mock_session = AsyncMock()
-                    mock_session.list_tools = AsyncMock(return_value=MagicMock(tools=[]))
-                    mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-                    mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-                    with patch("pipeline.extraction.asyncio.sleep", new_callable=AsyncMock):
-                        with pytest.raises(PipelineError) as exc_info:
-                            asyncio.run(agent.process(docx_path))
+        assert exc_info.value.error_type == "business"
+        assert exc_info.value.is_retriable is False
 
-        assert exc_info.value.error_type == "transient"
-        assert exc_info.value.is_retriable is True
+    def test_document_name_matches_filename(self, tmp_path: Path) -> None:
+        path = tmp_path / "my_report.docx"
+        _write_minimal_docx(path, ["Content"])
+        agent = ExtractionAgent(_make_scratchpad(tmp_path))
+
+        artifact = asyncio.run(agent.process(path))
+
+        assert artifact["document_name"] == "my_report.docx"

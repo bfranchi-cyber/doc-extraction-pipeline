@@ -28,3 +28,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src/pipeline --cov-report=term-missing --cov-fail-under=65"
+
+[tool.coverage.run]
+omit = ["src/pipeline/main.py"]
