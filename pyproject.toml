@@ -10,6 +10,9 @@ dependencies = [
     "anthropic[mcp]>=0.25",
     "mcp>=1.8,<2.0",
     "mammoth>=1.6",
+    "arize-phoenix>=4.0",
+    "arize-phoenix-otel>=0.6",
+    "openinference-instrumentation-anthropic>=0.1",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +24,7 @@ dev = [
 
 [project.scripts]
 docs-extraction = "pipeline.main:main"
+docs-extraction-eval = "eval.eval_main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
