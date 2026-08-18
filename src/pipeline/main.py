@@ -10,6 +10,7 @@ from pipeline.classification import ClassificationAgent
 from pipeline.exceptions import PipelineError
 from pipeline.extraction import Extractor
 from pipeline.scratchpad import Scratchpad
+from pipeline.tracing import get_tracer, setup_tracing
 
 
 def _resolve_vault_root(scratchpad: Scratchpad) -> Path | None:
@@ -38,6 +39,12 @@ def main() -> None:
     output_root.mkdir(parents=True, exist_ok=True)
 
     scratchpad = Scratchpad(output_root / "scratchpad.jsonl")
+
+    if not setup_tracing("docs-extraction"):
+        scratchpad.warn("Phoenix tracing setup failed — continuing without tracing")
+
+    _tracer = get_tracer(__name__)
+
     extractor = Extractor(scratchpad)
     vault_root = _resolve_vault_root(scratchpad)
     classifier = ClassificationAgent(vault_root, scratchpad) if vault_root else None
@@ -56,18 +63,20 @@ def main() -> None:
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
             print(f"  Processing: {relative}")
-            try:
-                artifact = await extractor.process(docx_path)
-                output_path.write_text(artifact["extracted_text"], encoding="utf-8")
-                scratchpad.info(f"Extracted: {relative}", context={"output": str(output_path)})
-                print(f"  -> {output_path.relative_to(output_root)}")
-            except PipelineError as exc:
-                scratchpad.error(f"Failed: {relative}: {exc}", context=exc.to_dict())
-                print(f"  ERROR: {exc}", file=sys.stderr)
-                continue
+            with _tracer.start_as_current_span("process_document") as span:
+                span.set_attribute("document.name", docx_path.name)
+                try:
+                    artifact = await extractor.process(docx_path)
+                    output_path.write_text(artifact["extracted_text"], encoding="utf-8")
+                    scratchpad.info(f"Extracted: {relative}", context={"output": str(output_path)})
+                    print(f"  -> {output_path.relative_to(output_root)}")
+                except PipelineError as exc:
+                    scratchpad.error(f"Failed: {relative}: {exc}", context=exc.to_dict())
+                    print(f"  ERROR: {exc}", file=sys.stderr)
+                    continue
 
-            if classifier:
-                await classifier.classify(output_path)
+                if classifier:
+                    await classifier.classify(output_path)
 
     asyncio.run(run_all())
     print("Done.")
