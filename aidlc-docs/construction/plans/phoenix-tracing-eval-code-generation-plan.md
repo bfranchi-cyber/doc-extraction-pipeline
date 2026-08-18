@@ -16,43 +16,32 @@
 
 ---
 
-### Step 1 — Refactor `src/pipeline/classification.py` (FR-08a)
-**Action**: Modify existing file
-
-Extract the category descriptions out of `_SYSTEM_PROMPT` into a public `CATEGORY_DESCRIPTIONS: dict[str, str]` mapping each category name to its description. Rebuild `_SYSTEM_PROMPT` from `CATEGORY_DESCRIPTIONS` at module level so behaviour is unchanged. No changes to `classify()` or `_move_to_vault()` signatures in this step.
-
-- [ ] Add `CATEGORY_DESCRIPTIONS: dict[str, str]` as a public module-level constant
-- [ ] Rebuild `_SYSTEM_PROMPT` from `CATEGORY_DESCRIPTIONS` (same final string, different construction)
-- [ ] Confirm `VALID_CATEGORIES` still matches the keys of `CATEGORY_DESCRIPTIONS`
-
----
-
-### Step 2 — Create `src/pipeline/tracing.py` (FR-07)
+### Step 1 — Create `src/pipeline/tracing.py` (FR-07)
 **Action**: Create new file
 
 Two public functions:
 - `setup_tracing(project_name: str) -> bool` — launches Phoenix in-process via `px.launch_app()`, calls `register(project_name=..., endpoint=..., auto_instrument=True)` from `phoenix.otel`, explicitly calls `AnthropicInstrumentor().instrument()`, returns `True` on success and `False` on any exception (logs warning to stderr — no Scratchpad dependency here since Scratchpad may not yet exist at call time)
 - `get_tracer(name: str = __name__) -> opentelemetry.trace.Tracer` — returns `trace.get_tracer(name)`; works as a no-op when no provider is configured (OTEL guarantee)
 
-- [ ] Create `src/pipeline/tracing.py` with `setup_tracing` and `get_tracer`
+- [x] Create `src/pipeline/tracing.py` with `setup_tracing` and `get_tracer`
 
 ---
 
-### Step 3 — Modify `src/pipeline/extraction.py` (FR-04)
+### Step 2 — Modify `src/pipeline/extraction.py` (FR-04)
 **Action**: Modify existing file
 
 Wrap the mammoth extraction block inside an `extract` child span. Span attributes: `document.name` (filename), `extracted_text_length` (character count of result). If tracing is unavailable the OTEL no-op tracer ensures no error.
 
-- [ ] Import `get_tracer` from `pipeline.tracing`
-- [ ] Wrap extraction logic in `tracer.start_as_current_span("extract")` context manager
-- [ ] Set `document.name` and `extracted_text_length` span attributes
+- [x] Import `get_tracer` from `pipeline.tracing`
+- [x] Wrap extraction logic in `tracer.start_as_current_span("extract")` context manager
+- [x] Set `document.name` and `extracted_text_length` span attributes
 
 ---
 
-### Step 4 — Modify `src/pipeline/classification.py` (FR-04, FR-05)
-**Action**: Modify existing file (second pass — spans and eval attributes)
+### Step 3 — Modify `src/pipeline/classification.py` (FR-04, FR-05)
+**Action**: Modify existing file — spans and eval attributes only
 
-Wrap the body of `classify()` in a `classify` child span. Record programmatic eval attributes on the span after the API call. Do **not** call EvalAgent here.
+Wrap the body of `classify()` in a `classify` child span. Record programmatic eval attributes on the span after the API call. Do **not** call EvalAgent here. `CATEGORY_DESCRIPTIONS` is not touched in this step.
 
 Span attributes:
 - `document.name` — filename
@@ -61,31 +50,42 @@ Span attributes:
 - `eval.latency_ms` — duration of the `messages.create()` call in ms
 - `eval.api_error` — bool; `True` when API exception was raised
 
-- [ ] Import `get_tracer` and `time` (for latency measurement)
-- [ ] Wrap `classify()` body in `tracer.start_as_current_span("classify")` context manager
-- [ ] Measure `messages.create()` latency and record all eval attributes on the span
+- [x] Import `get_tracer` and `time` (for latency measurement)
+- [x] Wrap `classify()` body in `tracer.start_as_current_span("classify")` context manager
+- [x] Measure `messages.create()` latency and record all eval attributes on the span
 
 ---
 
-### Step 5 — Modify `src/pipeline/main.py` (FR-09)
+### Step 4 — Modify `src/pipeline/main.py` (FR-09)
 **Action**: Modify existing file
 
 - Call `setup_tracing("docs-extraction")` once, before the asyncio event loop, right after instantiating `Scratchpad`. Log a warning to the scratchpad if it returns `False`.
 - Wrap each document's processing block (extraction + classification) in a `process_document` root span with attribute `document.name`.
 - Do **not** import or reference anything from `eval`.
 
-- [ ] Import `setup_tracing` from `pipeline.tracing`
-- [ ] Call `setup_tracing("docs-extraction")` after `Scratchpad` instantiation; warn on failure
-- [ ] Wrap per-document block in `tracer.start_as_current_span("process_document")` with `document.name` attribute
+- [x] Import `setup_tracing` from `pipeline.tracing`
+- [x] Call `setup_tracing("docs-extraction")` after `Scratchpad` instantiation; warn on failure
+- [x] Wrap per-document block in `tracer.start_as_current_span("process_document")` with `document.name` attribute
 
 ---
 
-### Step 6 — Create `src/eval/__init__.py` (FR-08)
+### Step 5 — Create `src/eval/__init__.py` (FR-08)
 **Action**: Create new file
 
 Empty package marker.
 
-- [ ] Create empty `src/eval/__init__.py`
+- [x] Create empty `src/eval/__init__.py`
+
+---
+
+### Step 6 — Refactor `src/pipeline/classification.py` (FR-08a)
+**Action**: Modify existing file — public `CATEGORY_DESCRIPTIONS` export
+
+Extract the category descriptions out of `_SYSTEM_PROMPT` into a public `CATEGORY_DESCRIPTIONS: dict[str, str]` mapping each category name to its description string. Rebuild `_SYSTEM_PROMPT` from `CATEGORY_DESCRIPTIONS` at module level so runtime behaviour is unchanged. This step is placed here because `CATEGORY_DESCRIPTIONS` is only consumed by `eval_agent.py` (Step 7); steps 1–5 have no dependency on it.
+
+- [x] Add `CATEGORY_DESCRIPTIONS: dict[str, str]` as a public module-level constant
+- [x] Rebuild `_SYSTEM_PROMPT` from `CATEGORY_DESCRIPTIONS` (same final string, different construction)
+- [x] Confirm `VALID_CATEGORIES` keys match `CATEGORY_DESCRIPTIONS` keys
 
 ---
 
@@ -99,7 +99,7 @@ Empty package marker.
 
 Imports: `VALID_CATEGORIES`, `CATEGORY_DESCRIPTIONS` from `pipeline.classification`.
 
-- [ ] Create `src/eval/eval_agent.py` with `EvalAgent` class
+- [x] Create `src/eval/eval_agent.py` with `EvalAgent` class
 
 ---
 
@@ -112,7 +112,7 @@ Imports: `VALID_CATEGORIES`, `CATEGORY_DESCRIPTIONS` from `pipeline.classificati
 - Prints summary: `Evaluated N spans — correct: X, incorrect: Y`
 - Exits with code 1 and clear error message if Phoenix is unreachable
 
-- [ ] Create `src/eval/eval_main.py` with `main()` function
+- [x] Create `src/eval/eval_main.py` with `main()` function
 
 ---
 
@@ -123,8 +123,8 @@ Imports: `VALID_CATEGORIES`, `CATEGORY_DESCRIPTIONS` from `pipeline.classificati
 - Add new script entry: `docs-extraction-eval = "eval.eval_main:main"`
 - Confirm `find: where = ["src"]` already covers both `pipeline` and `eval` packages (no change needed)
 
-- [ ] Add 3 new deps to `[project] dependencies`
-- [ ] Add `docs-extraction-eval` to `[project.scripts]`
+- [x] Add 3 new deps to `[project] dependencies`
+- [x] Add `docs-extraction-eval` to `[project.scripts]`
 
 ---
 
@@ -135,7 +135,7 @@ Unit tests for `setup_tracing`:
 - Test success path: mocked `px.launch_app()` + `register` + `AnthropicInstrumentor` → returns `True`
 - Test failure path: `px.launch_app()` raises exception → returns `False`, no exception propagated
 
-- [ ] Create `tests/unit/test_tracing.py`
+- [x] Create `tests/unit/test_tracing.py`
 
 ---
 
@@ -144,7 +144,7 @@ Unit tests for `setup_tracing`:
 
 Empty package marker for the eval test directory.
 
-- [ ] Create empty `tests/eval/__init__.py`
+- [x] Create empty `tests/eval/__init__.py`
 
 ---
 
@@ -157,14 +157,14 @@ Unit tests for `EvalAgent`:
 - Test `_judge_span` API failure: Anthropic raises exception → returns `"skipped"`
 - Test `run_evals` with no unevaluated spans: mocked Phoenix client returns empty list → returns `{"evaluated": 0, "correct": 0, "incorrect": 0}`
 
-- [ ] Create `tests/eval/test_eval_agent.py`
+- [x] Create `tests/eval/test_eval_agent.py`
 
 ---
 
 ### Step 13 — Create code summary doc (documentation)
 **Action**: Create new file
 
-- [ ] Create `aidlc-docs/construction/phoenix-tracing-eval/code/code-summary.md` with a brief summary of all generated/modified files, key design decisions, and the one-way dependency rule
+- [x] Create `aidlc-docs/construction/phoenix-tracing-eval/code/code-summary.md` with a brief summary of all generated/modified files, key design decisions, and the one-way dependency rule
 
 ---
 
@@ -172,12 +172,12 @@ Unit tests for `EvalAgent`:
 
 | Step | File | Action |
 |---|---|---|
-| 1 | `src/pipeline/classification.py` | MODIFY — public `CATEGORY_DESCRIPTIONS` |
-| 2 | `src/pipeline/tracing.py` | CREATE |
-| 3 | `src/pipeline/extraction.py` | MODIFY — extract span |
-| 4 | `src/pipeline/classification.py` | MODIFY — classify span + eval attributes |
-| 5 | `src/pipeline/main.py` | MODIFY — tracing init + root span |
-| 6 | `src/eval/__init__.py` | CREATE |
+| 1 | `src/pipeline/tracing.py` | CREATE |
+| 2 | `src/pipeline/extraction.py` | MODIFY — extract span |
+| 3 | `src/pipeline/classification.py` | MODIFY — classify span + eval attributes |
+| 4 | `src/pipeline/main.py` | MODIFY — tracing init + root span |
+| 5 | `src/eval/__init__.py` | CREATE |
+| 6 | `src/pipeline/classification.py` | MODIFY — public `CATEGORY_DESCRIPTIONS` |
 | 7 | `src/eval/eval_agent.py` | CREATE |
 | 8 | `src/eval/eval_main.py` | CREATE |
 | 9 | `pyproject.toml` | MODIFY |
