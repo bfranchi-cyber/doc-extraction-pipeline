@@ -1,54 +1,75 @@
 # Build Instructions
 
 ## Prerequisites
-- **Runtime**: Python 3.11+
-- **Package manager**: `uv` (recommended) or `pip`
-- **Dependencies**: See `pyproject.toml`
 
-## Required Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
-| `ANTHROPIC_BASE_URL` | Yes (corporate) | Corporate proxy base URL |
-| `LIGHT_MODEL` | Yes | Model name for classification (e.g. claude-haiku-4-5-20251001) |
-| `OBSIDIAN_VAULT_PATH` | Optional | Absolute path to Obsidian vault root; classification skipped if absent |
+- **Build Tool**: setuptools >= 68, pip
+- **Python**: >= 3.11
+- **Dependencies**: See `pyproject.toml` — runtime deps include `anthropic`, `mammoth`, `arize-phoenix`, `arize-phoenix-otel`, `openinference-instrumentation-anthropic`
+- **Environment Variables**:
+  - `LIGHT_MODEL` — Anthropic model ID for classification (e.g. `claude-haiku-4-5-20251001`)
+  - `MEDIUM_MODEL` — Anthropic model ID for eval judging (e.g. `claude-sonnet-5`)
+  - `ANTHROPIC_API_KEY` — Anthropic API key
+  - `OBSIDIAN_VAULT_PATH` — (optional) path to Obsidian vault for classification filing
+  - `PHOENIX_HOST` — (optional) Phoenix host, defaults to `localhost:6006`
+- **System Requirements**: Python 3.11+, internet access for Anthropic API
 
 ## Build Steps
 
-### 1. Install Dependencies
+### 1. Create and Activate Virtual Environment
 
 ```bash
-uv sync
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
 ```
 
-Or with pip:
+### 2. Install Runtime + Dev Dependencies
+
 ```bash
 pip install -e ".[dev]"
 ```
 
-### 2. Verify Installation
+This installs:
+- All runtime dependencies (including Phoenix packages)
+- Dev dependencies: `pytest`, `pytest-asyncio`, `pytest-cov`, `hypothesis`
+- The two CLI entry points: `docs-extraction` and `docs-extraction-eval`
+
+### 3. Verify Installation
 
 ```bash
-uv run docs-extraction --help
+docs-extraction --help
+docs-extraction-eval --help
 ```
 
-Expected output: argument parser showing `--input` and `--output` flags.
+Both commands should print usage without error.
 
-### 3. Configure Environment
+### 4. Verify Entry Points Resolve
 
-Copy `.env` to project root (if not already present) and ensure the four variables above are set.
+```bash
+python -c "from pipeline.tracing import setup_tracing, get_tracer; print('tracing OK')"
+python -c "from eval.eval_agent import EvalAgent; print('eval OK')"
+```
 
-## Build Artifacts
-- `src/pipeline/` — installed as the `docs-extraction` package
-- CLI entry point: `docs-extraction` (defined in `pyproject.toml` `[project.scripts]`)
+## Expected Build Output
+
+```
+Successfully installed docs-extraction-0.1.0 ...
+```
+
+Both entry points available, no import errors.
 
 ## Troubleshooting
 
-### `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`
-**Cause**: MCP 2.0+ removed `fastmcp`. The project pins `mcp>=1.8,<2.0`.
-**Solution**: Run `uv sync` — uv will downgrade to the pinned version automatically.
+### `ModuleNotFoundError: No module named 'phoenix'`
+- Cause: Phoenix packages not installed.
+- Solution: `pip install -e ".[dev]"` (installs all deps including Phoenix).
 
-### `LIGHT_MODEL` not set
-**Cause**: `.env` not loaded or missing variable.
-**Solution**: Ensure `.env` is present and sourced, or export the variable manually.
+### `ModuleNotFoundError: No module named 'eval'`
+- Cause: Package not installed in editable mode or `src/eval/` missing `__init__.py`.
+- Solution: Confirm `src/eval/__init__.py` exists, then `pip install -e .`.
+
+### `KeyError: 'MEDIUM_MODEL'` at runtime
+- Cause: Required env var not set.
+- Solution: Export `MEDIUM_MODEL` before running `docs-extraction-eval`.

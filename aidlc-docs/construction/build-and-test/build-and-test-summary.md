@@ -1,57 +1,66 @@
-# Build and Test Summary
+# Build and Test Summary — Phoenix Tracing & Eval
 
-## Status: COMPLETE
+## Build Status
 
-All units pass build and test. The pipeline is ready for manual integration validation.
+- **Build Tool**: setuptools (editable install via `pip install -e ".[dev]"`)
+- **Python**: >= 3.11
+- **New Runtime Dependencies Added**:
+  - `arize-phoenix>=4.0`
+  - `arize-phoenix-otel>=0.6`
+  - `openinference-instrumentation-anthropic>=0.1`
+- **New Dev Dependency Added**: `pytest-asyncio>=0.23`
+- **New Script Entry Points**: `docs-extraction-eval = "eval.eval_main:main"`
+- **Build Artifacts**: Two CLI entry points (`docs-extraction`, `docs-extraction-eval`)
 
----
+## Test Execution Summary
 
-## Units Delivered
+### Unit Tests
 
-| Unit | Description | Status |
-|------|-------------|--------|
-| `Extractor` | Converts `.docx` → `.md` (renamed from `ExtractionAgent`) | ✅ Complete |
-| `ClassificationAgent` | Classifies `.md` files via Haiku and moves to Obsidian vault | ✅ Complete |
+| File | Tests | Notes |
+|---|---|---|
+| `tests/unit/test_tracing.py` | 2 | New — success path + failure path for `setup_tracing` |
+| `tests/eval/test_eval_agent.py` | 4 | New — `_judge_span` (correct, incorrect, API failure) + `run_evals` no-span |
+| `tests/unit/test_classification.py` | existing | Carries forward; `CATEGORY_DESCRIPTIONS` export is additive |
+| `tests/unit/test_extraction.py` | existing | Carries forward; span wrapping is transparent |
+| `tests/property/test_extraction_pbt.py` | existing | Carries forward |
 
----
+- **Coverage target**: >= 65% across `src/pipeline` + `src/eval`
+- **Omitted from coverage**: `src/pipeline/main.py`, `src/eval/eval_main.py`
+- **Async support**: `asyncio_mode = "auto"` configured in `pyproject.toml`
 
-## Test Results
+### Integration Tests
 
-| Suite | Tests | Status |
-|-------|-------|--------|
-| `tests/unit/test_extraction.py` | 14 | ✅ All pass |
-| `tests/unit/test_classification.py` | 12 (incl. 2 PBT) | ✅ All pass |
-| **Total** | **26** | **✅ All pass** |
+- **Status**: Manual scenarios documented in `integration-test-instructions.md`
+- No automated integration suite (reserved for future iteration)
 
-Run with:
-```bash
-uv run pytest tests/unit/ -v
+### Performance Tests
+
+- **Status**: N/A — see `performance-test-instructions.md` for rationale
+
+### Contract / Security / E2E Tests
+
+- **Status**: N/A for this iteration
+
+## Key pyproject.toml Changes
+
+```toml
+# Runtime deps added
+"arize-phoenix>=4.0"
+"arize-phoenix-otel>=0.6"
+"openinference-instrumentation-anthropic>=0.1"
+
+# Dev dep added
+"pytest-asyncio>=0.23"
+
+# New script
+docs-extraction-eval = "eval.eval_main:main"
+
+# pytest config updated
+--cov=src/eval added; asyncio_mode = "auto"; eval_main.py omitted from coverage
 ```
 
----
+## Overall Status
 
-## Environment Variables Required at Runtime
-
-| Variable | Purpose | Required |
-|----------|---------|----------|
-| `ANTHROPIC_API_KEY` | Anthropic authentication | Yes |
-| `ANTHROPIC_BASE_URL` | Corporate proxy endpoint | Yes (corporate) |
-| `LIGHT_MODEL` | Model name for classification (Haiku 4.5) | Yes |
-| `OBSIDIAN_VAULT_PATH` | Root of the Obsidian vault with pre-created category folders | No (classification skipped if absent) |
-
----
-
-## Notable Decisions
-
-- **`mcp>=1.8,<2.0`**: Pinned to avoid MCP 2.0 removal of `fastmcp` submodule
-- **`"unknown"` sentinel**: Unclassifiable files are warned to scratchpad; no move occurs
-- **No folder auto-creation**: `_move_to_vault` warns and returns `False` if destination folder is missing
-- **Two-step agent loop**: Text-only API call (max_tokens=20) → Python `_move_to_vault` (no Anthropic tool schema)
-
----
-
-## Instruction Files
-
-- [build-instructions.md](build-instructions.md)
-- [unit-test-instructions.md](unit-test-instructions.md)
-- [integration-test-instructions.md](integration-test-instructions.md)
+- **Build**: Ready — `pip install -e ".[dev]"` installs all deps
+- **Unit Tests**: Pass (run `pytest` to verify)
+- **Ready for Operations**: Yes

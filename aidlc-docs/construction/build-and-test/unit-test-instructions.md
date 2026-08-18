@@ -1,44 +1,55 @@
 # Unit Test Execution
 
-## Run All Unit Tests
+## Test Suites
+
+| Suite | Location | Count | Notes |
+|---|---|---|---|
+| Pipeline unit tests | `tests/unit/` | ~20 tests | Existing + new `test_tracing.py` |
+| Eval unit tests | `tests/eval/` | 4 tests | New — requires `pytest-asyncio` |
+| Property-based tests | `tests/property/` | 2+ tests | Hypothesis-based |
+
+## Run All Tests
 
 ```bash
-uv run pytest tests/unit/ -v
+pytest
 ```
 
-## Expected Results
+Pytest is configured in `pyproject.toml`:
+- Covers `src/pipeline` and `src/eval`
+- Coverage threshold: 65%
+- Async mode: `auto` (no `@pytest.mark.asyncio` decoration needed beyond class-level)
+- Omits `src/pipeline/main.py` and `src/eval/eval_main.py` (entry points with no unit-testable logic)
 
-- **Total**: 26 tests
-- **Passed**: 26
-- **Failed**: 0
-- **Coverage threshold**: 65% (enforced by `--cov-fail-under=65` in `pyproject.toml`)
-
-## Test Breakdown
-
-| Module | Class | Tests |
-|---|---|---|
-| `test_classification.py` | `TestClassificationAgent` | 10 (6 unit + 4 parametrized) |
-| `test_classification.py` | `TestClassificationAgentPBT` | 2 (PBT-02, PBT-07) |
-| `test_extraction.py` | `TestParseDocument` | 3 |
-| `test_extraction.py` | `TestExtractionAgentProcess` | 4 |
-| `test_scratchpad.py` | — | 7 |
-
-## Run Specific Test File
+## Run Specific Suites
 
 ```bash
-# Classification tests only
-uv run pytest tests/unit/test_classification.py -v
+# Pipeline unit tests only
+pytest tests/unit/
 
-# Extraction tests only
-uv run pytest tests/unit/test_extraction.py -v
+# Eval unit tests only
+pytest tests/eval/
+
+# Property-based tests only
+pytest tests/property/
+
+# New tracing tests
+pytest tests/unit/test_tracing.py -v
+
+# New eval agent tests
+pytest tests/eval/test_eval_agent.py -v
 ```
 
-## Coverage Report
+## Review Test Results
 
-```bash
-uv run pytest tests/unit/ --cov=src/pipeline --cov-report=term-missing
-```
+- **Expected**: all tests pass, 0 failures
+- **Coverage target**: >= 65% across `src/pipeline` + `src/eval`
+- **Coverage report**: printed to terminal after each run
 
-## Notes
-- Classification tests mock the Anthropic client — no API key needed to run unit tests
-- PBT tests use Hypothesis; increase `max_examples` in `@settings` for deeper exploration
+## Fix Failing Tests
+
+1. Run `pytest -v` to see which tests fail and the error message
+2. Common causes:
+   - `test_tracing.py` fails: check that `sys.modules` patching is applied before the import inside `setup_tracing`
+   - `test_eval_agent.py` fails with `RuntimeError: no event loop`: ensure `asyncio_mode = "auto"` is set in `pyproject.toml`
+   - Import errors for `phoenix` / `openinference`: install deps with `pip install -e ".[dev]"` (Phoenix is a runtime dep, so it is always installed)
+3. Rerun `pytest` until all pass

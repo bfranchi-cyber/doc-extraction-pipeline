@@ -1,72 +1,83 @@
 # Integration Test Instructions
 
-## Purpose
-Test the full extraction → classification → move pipeline end-to-end using a real `.docx` file and the live Anthropic API.
+## Scope
 
-## Prerequisites
-- All environment variables set (see `build-instructions.md`)
-- `OBSIDIAN_VAULT_PATH` set to a test vault with the five category folders pre-created
-- At least one `.docx` test file available
+This project is a local CLI tool with two execution paths:
+1. **Extraction + classification pipeline** (`docs-extraction`) — reads `.docx` files, produces `.md` files, optionally classifies into Obsidian vault folders, and emits OTEL spans to Phoenix.
+2. **Eval runner** (`docs-extraction-eval`) — connects to a running Phoenix instance and judges unevaluated classify spans via LLM.
 
-## Setup
+Integration tests verify the two paths work end-to-end without real Anthropic API calls.
 
-### 1. Create a test vault
+## Scenario 1: End-to-end extraction pipeline with tracing
 
+**What is tested**: `docs-extraction` runs against a folder of `.docx` files, produces `.md` files, and Phoenix tracing initialises without error.
+
+**Setup**:
 ```bash
-mkdir -p /path/to/test-vault/Architecture
-mkdir -p /path/to/test-vault/CI&T
-mkdir -p /path/to/test-vault/Cloud
-mkdir -p /path/to/test-vault/Coding
-mkdir -p /path/to/test-vault/ML&AI
+# Start Phoenix locally (if not already running)
+python -c "import phoenix as px; px.launch_app()"
+# Or: phoenix serve
 ```
 
-### 2. Set environment variables
-
+**Test steps**:
 ```bash
-export OBSIDIAN_VAULT_PATH=/path/to/test-vault
-export LIGHT_MODEL=<your-haiku-model-name>
-export ANTHROPIC_API_KEY=<your-key>
-export ANTHROPIC_BASE_URL=<your-proxy-url>
+export LIGHT_MODEL=claude-haiku-4-5-20251001
+export ANTHROPIC_API_KEY=<key>
+docs-extraction --input tests/fixtures/docx/ --output /tmp/docs-output/
 ```
 
-### 3. Prepare test input
+**Expected results**:
+- `.md` files created under `/tmp/docs-output/` mirroring the input structure
+- `scratchpad.jsonl` written at `/tmp/docs-output/scratchpad.jsonl`
+- No Python tracebacks in stderr
+- If Phoenix is running: spans visible at `http://localhost:6006` under project `docs-extraction`
+- If Phoenix is not running: warning printed to scratchpad, pipeline completes normally
 
-Place one or more `.docx` files in a test input folder, e.g. `/tmp/test-input/`.
-
-## Scenario 1: Full Pipeline — Extract + Classify + Move
-
+**Cleanup**:
 ```bash
-uv run docs-extraction --input /tmp/test-input --output /tmp/test-output
+rm -rf /tmp/docs-output/
 ```
 
-**Expected results:**
-- `.md` files are written to `/tmp/test-output/`
-- Each `.md` file is moved to the matching vault folder (e.g. `$OBSIDIAN_VAULT_PATH/Coding/my-doc.md`)
-- `scratchpad.jsonl` in `/tmp/test-output/` contains `INFO` entries for classified files
-- No `.md` files remain in `/tmp/test-output/` for successfully classified documents
+## Scenario 2: Eval runner against real Phoenix spans
 
-## Scenario 2: Missing Vault Path — Classification Skipped
+**What is tested**: `docs-extraction-eval` connects to Phoenix, retrieves classify spans, and returns a verdict summary.
 
+**Prerequisites**: Scenario 1 must have run at least once with Phoenix active so spans exist.
+
+**Setup**:
 ```bash
-unset OBSIDIAN_VAULT_PATH
-uv run docs-extraction --input /tmp/test-input --output /tmp/test-output
+export MEDIUM_MODEL=claude-sonnet-5
+export ANTHROPIC_API_KEY=<key>
+# Phoenix must be running
 ```
 
-**Expected results:**
-- `.md` files are written and remain in `/tmp/test-output/`
-- `scratchpad.jsonl` contains a `WARN` entry: `OBSIDIAN_VAULT_PATH not set`
-- No files moved
-
-## Scenario 3: Unclassifiable Document
-
-Use a `.docx` containing ambiguous or non-technical content (e.g. a recipe or poem).
-
-**Expected results:**
-- `.md` file stays in output folder
-- `scratchpad.jsonl` contains `WARN` entry: `Unclassifiable: <filename>`
-
-## Cleanup
-
+**Test steps**:
 ```bash
-rm -rf /tmp/test-output
+docs-extraction-eval
 ```
+
+**Expected results**:
+```
+Evaluated N spans — correct: X, incorrect: Y
+```
+- Exit code 0
+- If Phoenix unreachable: error printed to stderr, exit code 1
+
+## Test Fixtures
+
+Create minimal `.docx` fixtures for manual integration testing:
+```bash
+# Install python-docx for fixture creation
+pip install python-docx
+python - <<'EOF'
+from docx import Document
+doc = Document()
+doc.add_paragraph("This document covers AWS Lambda and Terraform for cloud deployments.")
+doc.save("tests/fixtures/docx/sample-cloud.docx")
+EOF
+```
+
+## Notes
+
+- No automated integration test suite exists yet; the `tests/integration/` directory is reserved for future automation.
+- These manual scenarios double as smoke tests before any release.
