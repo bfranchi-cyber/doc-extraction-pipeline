@@ -1,10 +1,11 @@
 # AI-DLC State Tracking
 
 ## Project Information
-- **Project Type**: Greenfield
+- **Project Type**: Brownfield (existing code)
 - **Start Date**: 2026-08-07T00:00:00Z
 - **Scope Change**: 2026-08-14T00:00:00Z — Google Drive / OAuth / PDF / categories / images / manifest dropped. Scope narrowed to local .docx → .md extraction.
-- **Current Stage**: CONSTRUCTION - Build and Test — COMPLETED
+- **New Iteration**: 2026-08-17T00:00:00Z — Phoenix tracing + eval metrics for ClassificationAgent
+- **Current Stage**: INCEPTION — Workflow Planning COMPLETED → Code Generation
 
 ## Workspace State
 - **Existing Code**: Yes
@@ -22,6 +23,30 @@
 | Security Baseline | No | Requirements Analysis |
 | Resiliency Baseline | No | Requirements Analysis |
 | Property-Based Testing | Partial (PBT-02, 07, 08) | Requirements Analysis |
+
+## Stage Progress (Phoenix Tracing & Eval — 2026-08-17)
+
+### INCEPTION PHASE
+- [x] Workspace Detection — COMPLETED
+- [x] Reverse Engineering — COMPLETED
+- [x] Requirements Analysis — COMPLETED
+- [-] User Stories — SKIPPED (no UX change, single developer)
+- [x] Workflow Planning — COMPLETED
+- [-] Application Design — SKIPPED (components fully specified in requirements)
+- [-] Units Generation — SKIPPED (single unit)
+
+### CONSTRUCTION PHASE (Unit: Phoenix Tracing & Eval)
+- [-] Functional Design — SKIPPED (requirements specify logic at implementation level)
+- [-] NFR Requirements — SKIPPED (NFRs in requirements)
+- [-] NFR Design — SKIPPED (no new patterns needed)
+- [-] Infrastructure Design — SKIPPED (local CLI, no cloud)
+- [ ] Code Generation — PENDING
+- [ ] Build and Test — PENDING
+
+### OPERATIONS PHASE
+- [-] Operations — PLACEHOLDER
+
+---
 
 ## Stage Progress (Classification Agent — 2026-08-14)
 

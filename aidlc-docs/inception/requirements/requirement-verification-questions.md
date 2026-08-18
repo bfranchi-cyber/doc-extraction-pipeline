@@ -1,43 +1,16 @@
-# Requirements Clarification Questions
-## Classification Agent — New Feature
+# Requirements Clarification — Phoenix Tracing & Eval
 
-Please answer each question by filling in the letter after `[Answer]:`.
-Choose the last option and describe your preference if none of the provided options fit.
+Please answer each question by filling in the letter choice after `[Answer]:`.
+If none of the options fit, choose the last option and describe your preference.
 
 ---
 
 ## Question 1
-What is the absolute path to your Obsidian vault (the root folder that contains the Architecture, CI&T, Cloud, Coding, ML&AI subfolders)?
+How should Phoenix run during local development and pipeline execution?
 
-A) I will provide the path as a CLI argument at runtime (e.g. `--vault /path/to/vault`)
+A) In-process — call `px.launch_app()` at pipeline startup; Phoenix UI available on localhost while the process is running (simplest, no Docker required)
 
-B) I will set it via an environment variable (e.g. `OBSIDIAN_VAULT_PATH`)
-
-C) Other (please describe after [Answer]: tag below — e.g. hardcode it, read from a config file, etc.)
-
-[Answer]: B
-
----
-
-## Question 2
-How should classification fit into the existing pipeline?
-
-A) Integrated — classification runs automatically right after extraction in the same command (extract → classify → move, all in one `docs-extraction` call)
-
-B) Separate command — classification is a new CLI command (e.g. `docs-classify --input <output-folder> --vault <vault-path>`) that the user runs after extraction
-
-C) Other (please describe after [Answer]: tag below)
-
-[Answer]: A 
-
----
-
-## Question 3
-What should happen when the agent cannot confidently classify a file into any of the five categories?
-
-A) Leave the file in the output folder and log a warning — do not move it
-
-B) Move it to a dedicated `_unclassified` folder inside the vault
+B) External server — connect to a separately running Phoenix instance (e.g., Docker container or remote host); pipeline only sends OTLP traces to it
 
 C) Other (please describe after [Answer]: tag below)
 
@@ -45,30 +18,77 @@ C) Other (please describe after [Answer]: tag below)
 
 ---
 
-## Question 4
-How much of the extracted text should be sent to Claude Haiku for classification?
+## Question 2
+Which parts of the pipeline should be traced?
 
-A) Full text — send the entire markdown content (most accurate, higher token cost)
+A) Classification only — trace every `ClassificationAgent.classify()` call (LLM request, response, category, latency)
 
-B) First 2 000 characters — enough context for most documents, low token cost
+B) Full pipeline — trace both extraction (`Extractor.process()`) and classification in the same trace, linked by a parent span
 
-C) First 500 characters — title + opening paragraph only, minimal tokens
+C) Other (please describe after [Answer]: tag below)
+
+[Answer]: B
+
+---
+
+## Question 3
+What eval metrics do you want collected?
+
+A) LLM-as-a-judge quality eval — for each classification, a second LLM call judges whether the assigned category is correct given the document excerpt (requires `MEDIUM_MODEL`)
+
+B) Programmatic metrics only — no second LLM call; collect: latency per call, category distribution (% per category), unknown rate (% classified as `unknown`), API error rate
+
+C) Both — programmatic metrics + LLM-as-a-judge quality eval
 
 D) Other (please describe after [Answer]: tag below)
 
-[Answer]:  C
+[Answer]: C 
+
+---
+
+## Question 4
+When should evals run?
+
+A) Online — evals run immediately after each classify() call, within the same pipeline execution
+
+B) Offline — evals run separately after traces are collected, as a distinct CLI command or script
+
+C) Other (please describe after [Answer]: tag below)
+
+[Answer]: A
 
 ---
 
 ## Question 5
-What rename should `ExtractionAgent` (in `extraction.py`) receive?
+How should the Phoenix project be named in the UI?
 
-A) `DocxExtractor` — plain descriptive name for what the class does
+A) `docs-extraction` (matches the package name)
 
-B) `ExtractionTool` — matches the "tool vs agent" language the user introduced
+B) `classification-agent` (matches the component name)
 
-C) `Extractor` — short and simple
+C) Other (please describe after [Answer]: tag below)
 
-D) Other (please describe after [Answer]: tag below)
+[Answer]: A
 
-[Answer]: C
+---
+
+## Extension Configuration (carrying forward from previous iteration)
+
+The following extension settings were decided in the previous cycle.
+Please confirm they still apply, or override below.
+
+| Extension | Previous Decision |
+|---|---|
+| Security Baseline | No |
+| Resiliency Baseline | No |
+| Property-Based Testing | Partial (PBT-02, 07, 08) |
+
+## Question 6
+Should the extension configuration above carry forward unchanged?
+
+A) Yes — keep all three settings as-is
+
+B) No — I want to change one or more (please describe after [Answer]: tag below)
+
+[Answer]: A
+

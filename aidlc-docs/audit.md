@@ -1,5 +1,109 @@
 # AI-DLC Audit Log
 
+## Workflow Planning — Approved
+**Timestamp**: 2026-08-17T00:12:00Z
+**User Input**: "approved"
+**AI Response**: Execution plan approved. Loading code-generation.md rules. Proceeding to Code Generation Part 1 — Planning.
+**Context**: CONSTRUCTION — Code Generation starting
+
+---
+
+## Execution Plan — Inconsistencies Fixed
+**Timestamp**: 2026-08-17T00:11:00Z
+**User Input**: "execution plan still has some inconsistency on NFR impact and it is not considering the new folder. Review it throughly"
+**AI Response**: Found and fixed 8 inconsistencies: stale module count in Transformation Scope; wrong test file count in Related Components; NFR impact still described latency increase from judge call (contradicted requirement change); Component Relationships listed pipeline-only, wrong module paths, wrong test path for test_eval_agent.py; Rollback said "2 new files"; Workflow Visualization said "all within pipeline package"; FR reference stopped at FR-09; Application Design skip rationale missing FR-10. Rewrote execution-plan.md in full.
+**Context**: INCEPTION — execution plan corrected, awaiting approval
+
+---
+
+## Design Decision — Eval Package Isolation
+**Timestamp**: 2026-08-17T00:10:00Z
+**User Input**: "lets go with b" (after pro/con analysis of keeping eval in pipeline vs isolating to src/eval/)
+**AI Response**: Option B selected. Updating requirements and execution plan. eval_agent.py and eval_main.py move to src/eval/. New src/eval/__init__.py. VALID_CATEGORIES stays public; _SYSTEM_PROMPT refactored into public CATEGORY_DESCRIPTIONS dict exported from classification.py. Tests move to tests/eval/. pyproject.toml entry point updated to eval.eval_main:main.
+**Context**: INCEPTION — pre-approval design decision, updating artifacts
+
+---
+
+## Requirements Change — LLM-as-Judge Moved to On-Demand Eval Context
+**Timestamp**: 2026-08-17T00:09:00Z
+**User Input**: "i've said that LLM as a judge should be called on every CLI run, but the latency and redundancy are not worth it. I would still like that tracing happens on every CLI run, but the LLM as a judge agent should be called on demand, only in eval context."
+**AI Response**: Change accepted. Updating requirements.md and execution-plan.md. FR-06 (LLM-as-judge) moves from online/per-classify to on-demand via a separate eval CLI entry point. FR-08 (EvalAgent) becomes a standalone eval runner, not integrated into main.py's per-doc loop. FR-09 simplified — main.py no longer wires EvalAgent. NFR-02 updated (latency concern removed from normal runs).
+**Context**: INCEPTION — requirements change before Workflow Planning approval
+
+---
+
+## Workflow Planning — COMPLETED
+**Timestamp**: 2026-08-17T00:08:00Z
+**User Input**: "approve"
+**AI Response**: Requirements approved. Created execution-plan.md. Risk: Low. SKIP: User Stories, Application Design, Units Generation, Functional Design, NFR Requirements, NFR Design, Infrastructure Design. EXECUTE: Code Generation, Build and Test. Single unit: Phoenix Tracing & Eval. 8 files affected (2 new src, 3 modified src, 1 pyproject.toml, 2 new test files). Updated aidlc-state.md.
+**Context**: INCEPTION — Workflow Planning COMPLETED → awaiting user approval
+
+---
+
+## Workflow Planning — Starting
+**Timestamp**: 2026-08-17T00:07:00Z
+**User Input**: "approve"
+**AI Response**: Requirements approved. Loading workflow-planning.md rules. Proceeding to Workflow Planning.
+**Context**: INCEPTION — Workflow Planning starting
+
+---
+
+## Requirements Analysis — COMPLETED
+**Timestamp**: 2026-08-17T00:06:00Z
+**User Input**: "done" — Q1=A (in-process), Q2=B (full pipeline), Q3=C (both evals), Q4=A (online), Q5=A (docs-extraction), Q6=A (extensions carry forward)
+**AI Response**: No contradictions. Generated requirements.md. FR-01..FR-09 + NFR-01..NFR-05. Key: Phoenix in-process launch, full pipeline OTEL span hierarchy, AnthropicInstrumentor auto-instrumentation, programmatic metrics on classify span, LLM-as-judge via new EvalAgent (MEDIUM_MODEL), new tracing.py + eval_agent.py modules. Extensions unchanged. Updated aidlc-state.md.
+**Context**: INCEPTION — Requirements Analysis COMPLETED → awaiting approval
+
+---
+
+## Requirements Analysis — Questions Created
+**Timestamp**: 2026-08-17T00:05:00Z
+**User Input**: "continue"
+**AI Response**: RE approved. Analyzed request: Enhancement, Single Component scope, Moderate complexity. Created requirement-verification-questions.md with 6 questions (Phoenix deployment, trace scope, eval metrics, eval timing, project name, extension carry-forward). Awaiting user answers.
+**Context**: INCEPTION — Requirements Analysis GATE: awaiting user answers
+
+---
+
+## Requirements Analysis — Starting
+**Timestamp**: 2026-08-17T00:04:00Z
+**User Input**: "continue"
+**AI Response**: Reverse Engineering approved. Loading requirements-analysis.md rules. Proceeding to Requirements Analysis.
+**Context**: INCEPTION — Requirements Analysis starting
+
+---
+
+## Reverse Engineering — COMPLETED
+**Timestamp**: 2026-08-17T00:03:00Z
+**User Input**: (automatic — no RE artifacts found)
+**AI Response**: Generated 8 RE artifacts in aidlc-docs/inception/reverse-engineering/: business-overview.md, architecture.md, code-structure.md, api-documentation.md, component-inventory.md, technology-stack.md, dependencies.md, code-quality-assessment.md. Key findings: 8 src files, 4 test files, 1 package (pipeline), Anthropic + mammoth + mcp stack, no cloud infra, extraction_server.py unused dead code, LIGHT_MODEL env var injection anti-pattern.
+**Context**: INCEPTION — Reverse Engineering COMPLETED → awaiting user approval
+
+---
+
+## Workspace Detection
+**Timestamp**: 2026-08-17T00:02:00Z
+**User Input**: "I would like to implement tracing and eval metrics using the phoenix framework for the classification agent"
+**AI Response**: New request received. Starting Workspace Detection — scanning codebase, checking RE artifacts.
+**Context**: INCEPTION — Workspace Detection starting
+
+---
+
+## Session Continuity — User Answer
+**Timestamp**: 2026-08-17T00:01:00Z
+**User Input**: "a"
+**AI Response**: User chose A — Start a new development request. Awaiting request description to begin Workspace Detection.
+**Context**: Session start — awaiting new request description
+
+---
+
+## Session Resume
+**Timestamp**: 2026-08-17T00:00:00Z
+**User Input**: "start aidlc"
+**AI Response**: Detected existing project. All stages for Classification Agent iteration COMPLETED. Displayed welcome message. Loaded common rules. Scanned extensions (Security=No, Resiliency=No, PBT=Partial). Created session-continuity-questions.md. Awaiting user direction.
+**Context**: Session start — previous cycle complete, awaiting new request
+
+---
+
 ## Session Resume
 **Timestamp**: 2026-08-14T00:00:00Z
 **User Input**: "start aidlc" → session continuity answer: "A" (Start a new development request; user typed "d" then clarified "actually is a, d was short for done")
