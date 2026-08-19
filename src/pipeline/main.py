@@ -56,27 +56,29 @@ def main() -> None:
 
     print(f"Found {len(docx_files)} .docx file(s). Extracting...")
 
+    async def process_one(docx_path: Path) -> None:
+        relative = docx_path.relative_to(input_root)
+        output_path = output_root / relative.with_suffix(".md")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"  Processing: {relative}")
+        with _tracer.start_as_current_span("process_document") as span:
+            span.set_attribute("document.name", docx_path.name)
+            try:
+                artifact = await extractor.process(docx_path)
+                output_path.write_text(artifact["extracted_text"], encoding="utf-8")
+                scratchpad.info(f"Extracted: {relative}", context={"output": str(output_path)})
+                print(f"  -> {output_path.relative_to(output_root)}")
+            except PipelineError as exc:
+                scratchpad.error(f"Failed: {relative}: {exc}", context=exc.to_dict())
+                print(f"  ERROR: {exc}", file=sys.stderr)
+                return
+
+            if classifier:
+                await classifier.classify(output_path)
+
     async def run_all() -> None:
-        for docx_path in docx_files:
-            relative = docx_path.relative_to(input_root)
-            output_path = output_root / relative.with_suffix(".md")
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
-            print(f"  Processing: {relative}")
-            with _tracer.start_as_current_span("process_document") as span:
-                span.set_attribute("document.name", docx_path.name)
-                try:
-                    artifact = await extractor.process(docx_path)
-                    output_path.write_text(artifact["extracted_text"], encoding="utf-8")
-                    scratchpad.info(f"Extracted: {relative}", context={"output": str(output_path)})
-                    print(f"  -> {output_path.relative_to(output_root)}")
-                except PipelineError as exc:
-                    scratchpad.error(f"Failed: {relative}: {exc}", context=exc.to_dict())
-                    print(f"  ERROR: {exc}", file=sys.stderr)
-                    continue
-
-                if classifier:
-                    await classifier.classify(output_path)
+        await asyncio.gather(*[process_one(p) for p in docx_files])
 
     asyncio.run(run_all())
     print("Done.")
