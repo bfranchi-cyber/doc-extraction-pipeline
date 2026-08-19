@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+import asyncio
+
 import anthropic
 
 from pipeline.classification import CATEGORY_DESCRIPTIONS, VALID_CATEGORIES
@@ -11,7 +13,7 @@ class EvalAgent:
     def __init__(self) -> None:
         self._model = os.environ["MEDIUM_MODEL"]
         self._phoenix_host = os.environ.get("PHOENIX_HOST", "localhost:6006")
-        self._client = anthropic.Anthropic()
+        self._client = anthropic.AsyncAnthropic()
 
     async def run_evals(self) -> dict:
         """Query Phoenix for unevaluated classify spans and judge each one.
@@ -42,8 +44,9 @@ class EvalAgent:
         results = {"evaluated": 0, "correct": 0, "incorrect": 0}
         evaluations = []
 
-        for span_row in unevaluated:
-            verdict = await self._judge_span(span_row)
+        verdicts = await asyncio.gather(*[self._judge_span(row) for row in unevaluated])
+
+        for span_row, verdict in zip(unevaluated, verdicts):
             if verdict == "skipped":
                 continue
             results["evaluated"] += 1
@@ -84,7 +87,7 @@ class EvalAgent:
                 f"Respond with ONLY 'correct' or 'incorrect'."
             )
 
-            response = self._client.messages.create(
+            response = await self._client.messages.create(
                 model=self._model,
                 max_tokens=10,
                 messages=[{"role": "user", "content": judge_prompt}],
