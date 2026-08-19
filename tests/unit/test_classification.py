@@ -5,7 +5,7 @@ import asyncio
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -67,7 +67,7 @@ class TestClassificationAgent:
         md_file = _make_md_file(tmp_path, "report.md", "Architecture content")
         agent = _make_agent(vault_root, scratchpad)
 
-        with patch.object(agent._client.messages, "create", return_value=_mock_response("Architecture")):
+        with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response("Architecture")):
             result = asyncio.run(agent.classify(md_file))
 
         assert result is True
@@ -81,7 +81,7 @@ class TestClassificationAgent:
         md_file = _make_md_file(tmp_path, "doc.md", f"Content about {category}")
         agent = _make_agent(vault_root, scratchpad)
 
-        with patch.object(agent._client.messages, "create", return_value=_mock_response(category)):
+        with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response(category)):
             result = asyncio.run(agent.classify(md_file))
 
         assert result is True
@@ -93,7 +93,7 @@ class TestClassificationAgent:
         md_file = _make_md_file(tmp_path, "mystery.md")
         agent = _make_agent(vault_root, scratchpad)
 
-        with patch.object(agent._client.messages, "create", return_value=_mock_response("unknown")):
+        with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response("unknown")):
             result = asyncio.run(agent.classify(md_file))
 
         assert result is False
@@ -105,7 +105,7 @@ class TestClassificationAgent:
         md_file = _make_md_file(tmp_path, "weird.md")
         agent = _make_agent(vault_root, scratchpad)
 
-        with patch.object(agent._client.messages, "create", return_value=_mock_response("NotACategory")):
+        with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response("NotACategory")):
             result = asyncio.run(agent.classify(md_file))
 
         assert result is False
@@ -119,7 +119,7 @@ class TestClassificationAgent:
         md_file = _make_md_file(tmp_path, "cloud.md")
         agent = _make_agent(vault_root, scratchpad)
 
-        with patch.object(agent._client.messages, "create", return_value=_mock_response("Cloud")):
+        with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response("Cloud")):
             result = asyncio.run(agent.classify(md_file))
 
         assert result is False
@@ -131,7 +131,7 @@ class TestClassificationAgent:
         md_file = _make_md_file(tmp_path, "fail.md")
         agent = _make_agent(vault_root, scratchpad)
 
-        with patch.object(agent._client.messages, "create", side_effect=RuntimeError("API down")):
+        with patch.object(agent._client.messages, "create", new_callable=AsyncMock, side_effect=RuntimeError("API down")):
             result = asyncio.run(agent.classify(md_file))
 
         assert result is False
@@ -159,7 +159,7 @@ class TestClassificationAgentPBT:
             md_file.write_text("content", encoding="utf-8")
 
             agent = _make_agent(vault_root, scratchpad)
-            with patch.object(agent._client.messages, "create", return_value=_mock_response(category)):
+            with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response(category)):
                 result = asyncio.run(agent.classify(md_file))
 
             assert result is True
@@ -179,7 +179,7 @@ class TestClassificationAgentPBT:
             md_file.write_text("content", encoding="utf-8")
 
             agent = _make_agent(vault_root, scratchpad)
-            with patch.object(agent._client.messages, "create", return_value=_mock_response(response)):
+            with patch.object(agent._client.messages, "create", new_callable=AsyncMock, return_value=_mock_response(response)):
                 result = asyncio.run(agent.classify(md_file))
 
             assert result is False

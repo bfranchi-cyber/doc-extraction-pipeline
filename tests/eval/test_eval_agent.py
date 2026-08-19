@@ -13,7 +13,7 @@ def agent(monkeypatch):
 
     mock_anthropic_module = MagicMock()
     mock_anthropic_client = MagicMock()
-    mock_anthropic_module.Anthropic.return_value = mock_anthropic_client
+    mock_anthropic_module.AsyncAnthropic.return_value = mock_anthropic_client
 
     with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
         from eval.eval_agent import EvalAgent
@@ -27,7 +27,7 @@ async def test_judge_span_correct(agent):
     eval_agent, mock_client = agent
     mock_response = MagicMock()
     mock_response.content = [MagicMock(text="correct")]
-    mock_client.messages.create.return_value = mock_response
+    mock_client.messages.create = AsyncMock(return_value=mock_response)
 
     span = {
         "attributes": {"document.name": "test.md", "eval.category": "Coding"},
@@ -42,7 +42,7 @@ async def test_judge_span_incorrect(agent):
     eval_agent, mock_client = agent
     mock_response = MagicMock()
     mock_response.content = [MagicMock(text="incorrect")]
-    mock_client.messages.create.return_value = mock_response
+    mock_client.messages.create = AsyncMock(return_value=mock_response)
 
     span = {
         "attributes": {"document.name": "architecture.md", "eval.category": "Coding"},
@@ -55,7 +55,7 @@ async def test_judge_span_incorrect(agent):
 @pytest.mark.asyncio
 async def test_judge_span_api_failure_returns_skipped(agent):
     eval_agent, mock_client = agent
-    mock_client.messages.create.side_effect = Exception("API timeout")
+    mock_client.messages.create = AsyncMock(side_effect=Exception("API timeout"))
 
     span = {
         "attributes": {"document.name": "test.md", "eval.category": "Cloud"},
