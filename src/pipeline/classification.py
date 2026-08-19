@@ -45,7 +45,7 @@ class ClassificationAgent:
     def __init__(self, vault_root: Path, scratchpad: Scratchpad) -> None:
         self._vault_root = vault_root
         self._scratchpad = scratchpad
-        self._client = anthropic.Anthropic()
+        self._client = anthropic.AsyncAnthropic()
         self._model = os.environ["LIGHT_MODEL"]
 
     async def classify(self, md_path: Path) -> bool:
@@ -62,7 +62,7 @@ class ClassificationAgent:
             api_error = False
             t0 = time.monotonic()
             try:
-                response = self._client.messages.create(
+                response = await self._client.messages.create(
                     model=self._model,
                     max_tokens=20,
                     system=_SYSTEM_PROMPT,
