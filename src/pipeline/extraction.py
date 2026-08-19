@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from pipeline.exceptions import PipelineError
@@ -24,9 +25,11 @@ class Extractor:
             try:
                 import mammoth
 
-                with open(docx_path, "rb") as f:
-                    result = mammoth.extract_raw_text(f)
-                extracted_text = result.value.strip()
+                def _extract() -> str:
+                    with open(docx_path, "rb") as f:
+                        return mammoth.extract_raw_text(f).value.strip()
+
+                extracted_text = await asyncio.to_thread(_extract)
             except Exception as exc:
                 raise PipelineError(
                     error_type="business",

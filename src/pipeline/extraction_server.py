@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -25,9 +26,11 @@ def make_extraction_app(scratchpad: Scratchpad) -> FastMCP:
         try:
             import mammoth
 
-            with open(path, "rb") as f:
-                result = mammoth.extract_raw_text(f)
-            return result.value.strip()
+            def _extract() -> str:
+                with open(path, "rb") as f:
+                    return mammoth.extract_raw_text(f).value.strip()
+
+            return await asyncio.to_thread(_extract)
         except Exception as exc:
             raise PipelineError(
                 error_type="business",
