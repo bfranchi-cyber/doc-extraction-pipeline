@@ -1,66 +1,57 @@
-# Build and Test Summary — Phoenix Tracing & Eval
+# Build and Test Summary — Analysis + Classify Refactor
 
 ## Build Status
 
-- **Build Tool**: setuptools (editable install via `pip install -e ".[dev]"`)
-- **Python**: >= 3.11
-- **New Runtime Dependencies Added**:
-  - `arize-phoenix>=4.0`
-  - `arize-phoenix-otel>=0.6`
-  - `openinference-instrumentation-anthropic>=0.1`
-- **New Dev Dependency Added**: `pytest-asyncio>=0.23`
-- **New Script Entry Points**: `docs-extraction-eval = "eval.eval_main:main"`
-- **Build Artifacts**: Two CLI entry points (`docs-extraction`, `docs-extraction-eval`)
+- **Build Tool**: uv
+- **Python**: 3.14.6
+- **Status**: SUCCESS
+- **Entry points**: `docs-extraction`, `docs-extraction-eval` installed
 
 ## Test Execution Summary
 
 ### Unit Tests
 
-| File | Tests | Notes |
-|---|---|---|
-| `tests/unit/test_tracing.py` | 2 | New — success path + failure path for `setup_tracing` |
-| `tests/eval/test_eval_agent.py` | 4 | New — `_judge_span` (correct, incorrect, API failure) + `run_evals` no-span |
-| `tests/unit/test_classification.py` | existing | Carries forward; `CATEGORY_DESCRIPTIONS` export is additive |
-| `tests/unit/test_extraction.py` | existing | Carries forward; span wrapping is transparent |
-| `tests/property/test_extraction_pbt.py` | existing | Carries forward |
+- **Total**: 59
+- **Passed**: 59
+- **Failed**: 0
+- **Coverage**: 93.69% (threshold: 65%)
+- **Status**: PASS
 
-- **Coverage target**: >= 65% across `src/pipeline` + `src/eval`
-- **Omitted from coverage**: `src/pipeline/main.py`, `src/eval/eval_main.py`
-- **Async support**: `asyncio_mode = "auto"` configured in `pyproject.toml`
+### New tests added
+
+| Test file | Tests | What's covered |
+|---|---|---|
+| `tests/unit/test_frontmatter.py` | 12 | `read_frontmatter`, `write_frontmatter` — all paths |
+| `tests/unit/test_analysis.py` | 6 | `AnalysisAgent` — success, failure, no tool block |
+| `tests/unit/test_classification.py` | 13 | Dynamic discovery, frontmatter path, fallback, PBT |
+| `tests/eval/test_eval_agent.py` | 6 | `vault_root` param, category prompt, no-vault case |
+| `tests/property/test_frontmatter_pbt.py` | 3 | YAML round-trip PBT, body preservation PBT, arbitrary content safety |
 
 ### Integration Tests
 
-- **Status**: Manual scenarios documented in `integration-test-instructions.md`
-- No automated integration suite (reserved for future iteration)
+- **Status**: Pending manual run (see `integration-test-instructions.md`)
+- **Scenarios**: full pipeline, fail-soft AnalysisAgent, empty vault
 
 ### Performance Tests
 
-- **Status**: N/A — see `performance-test-instructions.md` for rationale
+- **Status**: N/A — local CLI tool, no throughput targets
+- **Note**: `asyncio.gather` parallelism unchanged; `analyze()` adds one async LLM call per document
 
-### Contract / Security / E2E Tests
+## Coverage by Module
 
-- **Status**: N/A for this iteration
-
-## Key pyproject.toml Changes
-
-```toml
-# Runtime deps added
-"arize-phoenix>=4.0"
-"arize-phoenix-otel>=0.6"
-"openinference-instrumentation-anthropic>=0.1"
-
-# Dev dep added
-"pytest-asyncio>=0.23"
-
-# New script
-docs-extraction-eval = "eval.eval_main:main"
-
-# pytest config updated
---cov=src/eval added; asyncio_mode = "auto"; eval_main.py omitted from coverage
-```
+| Module | Coverage |
+|---|---|
+| `pipeline/analysis.py` | 100% |
+| `pipeline/frontmatter.py` | 91% |
+| `pipeline/classification.py` | 97% |
+| `pipeline/models.py` | 100% |
+| `pipeline/scratchpad.py` | 100% |
+| `pipeline/extraction.py` | 100% |
+| `eval/eval_agent.py` | 71% |
 
 ## Overall Status
 
-- **Build**: Ready — `pip install -e ".[dev]"` installs all deps
-- **Unit Tests**: Pass (run `pytest` to verify)
-- **Ready for Operations**: Yes
+- **Build**: SUCCESS
+- **Unit + Property Tests**: 59/59 PASS
+- **Integration Tests**: Pending manual run
+- **Ready for manual verification**: Yes

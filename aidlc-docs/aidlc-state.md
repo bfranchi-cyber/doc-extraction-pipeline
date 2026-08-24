@@ -6,7 +6,7 @@
 - **Scope Change**: 2026-08-14T00:00:00Z — Google Drive / OAuth / PDF / categories / images / manifest dropped. Scope narrowed to local .docx → .md extraction.
 - **New Iteration**: 2026-08-17T00:00:00Z — Phoenix tracing + eval metrics for ClassificationAgent
 - **New Iteration**: 2026-08-21T00:00:00Z — Analysis step + Classify refactor
-- **Current Stage**: CONSTRUCTION — Code Generation COMPLETED → Build and Test
+- **Current Stage**: CONSTRUCTION — Build and Test COMPLETED
 
 ## Workspace State
 - **Existing Code**: Yes
@@ -25,7 +25,7 @@
 | Resiliency Baseline | No | Requirements Analysis |
 | Property-Based Testing | Partial (pure functions + serialization round-trips) | Requirements Analysis |
 
-## Stage Progress (Analysis + Classify Refactor — 2026-08-21)
+## Stage Progress (Analysis + Classify Refactor — 2026-08-21 → 2026-08-24)
 
 ### INCEPTION PHASE
 - [x] Workspace Detection — COMPLETED
@@ -37,12 +37,12 @@
 - [-] Units Generation — SKIPPED (single unit)
 
 ### CONSTRUCTION PHASE (Unit: Analysis + Classify Refactor)
-- [-] Functional Design — TBD
-- [-] NFR Requirements — TBD
-- [-] NFR Design — TBD
-- [-] Infrastructure Design — TBD
+- [-] Functional Design — SKIPPED (requirements specify logic at implementation level)
+- [-] NFR Requirements — SKIPPED (NFRs in requirements)
+- [-] NFR Design — SKIPPED (no new patterns needed)
+- [-] Infrastructure Design — SKIPPED (local CLI, no cloud)
 - [x] Code Generation — COMPLETED
-- [ ] Build and Test — PENDING
+- [x] Build and Test — COMPLETED (59/59 tests pass, 93.69% coverage)
 
 ### OPERATIONS PHASE
 - [-] Operations — PLACEHOLDER

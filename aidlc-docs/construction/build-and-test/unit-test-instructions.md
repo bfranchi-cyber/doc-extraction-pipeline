@@ -1,55 +1,55 @@
 # Unit Test Execution
 
-## Test Suites
-
-| Suite | Location | Count | Notes |
-|---|---|---|---|
-| Pipeline unit tests | `tests/unit/` | ~20 tests | Existing + new `test_tracing.py` |
-| Eval unit tests | `tests/eval/` | 4 tests | New — requires `pytest-asyncio` |
-| Property-based tests | `tests/property/` | 2+ tests | Hypothesis-based |
-
-## Run All Tests
+## Run All Unit + Property Tests
 
 ```bash
-pytest
+uv run pytest -v
 ```
 
-Pytest is configured in `pyproject.toml`:
-- Covers `src/pipeline` and `src/eval`
-- Coverage threshold: 65%
-- Async mode: `auto` (no `@pytest.mark.asyncio` decoration needed beyond class-level)
-- Omits `src/pipeline/main.py` and `src/eval/eval_main.py` (entry points with no unit-testable logic)
+### Expected results
 
-## Run Specific Suites
+```
+59 passed, 0 failed
+Coverage: 93%+ (threshold: 65%)
+```
+
+## Run Specific Test Modules
 
 ```bash
-# Pipeline unit tests only
-pytest tests/unit/
+# Frontmatter utilities
+uv run pytest tests/unit/test_frontmatter.py -v
 
-# Eval unit tests only
-pytest tests/eval/
+# AnalysisAgent
+uv run pytest tests/unit/test_analysis.py -v
 
-# Property-based tests only
-pytest tests/property/
+# ClassificationAgent (dynamic discovery + frontmatter path)
+uv run pytest tests/unit/test_classification.py -v
 
-# New tracing tests
-pytest tests/unit/test_tracing.py -v
+# EvalAgent (vault_root decoupling)
+uv run pytest tests/eval/test_eval_agent.py -v
 
-# New eval agent tests
-pytest tests/eval/test_eval_agent.py -v
+# PBT: YAML round-trips
+uv run pytest tests/property/test_frontmatter_pbt.py -v
 ```
 
-## Review Test Results
+## Run Without Coverage (faster)
 
-- **Expected**: all tests pass, 0 failures
-- **Coverage target**: >= 65% across `src/pipeline` + `src/eval`
-- **Coverage report**: printed to terminal after each run
+```bash
+uv run pytest --no-cov -v
+```
+
+## Test Coverage by Module
+
+| Module | Coverage |
+|---|---|
+| `pipeline/analysis.py` | 100% |
+| `pipeline/frontmatter.py` | 91% |
+| `pipeline/classification.py` | 97% |
+| `pipeline/models.py` | 100% |
+| `eval/eval_agent.py` | 71% |
 
 ## Fix Failing Tests
 
-1. Run `pytest -v` to see which tests fail and the error message
-2. Common causes:
-   - `test_tracing.py` fails: check that `sys.modules` patching is applied before the import inside `setup_tracing`
-   - `test_eval_agent.py` fails with `RuntimeError: no event loop`: ensure `asyncio_mode = "auto"` is set in `pyproject.toml`
-   - Import errors for `phoenix` / `openinference`: install deps with `pip install -e ".[dev]"` (Phoenix is a runtime dep, so it is always installed)
-3. Rerun `pytest` until all pass
+1. Read the full pytest output (failing test name + assertion error)
+2. Check the module under test matches what the test expects
+3. Re-run the single failing test: `uv run pytest tests/unit/test_X.py::TestClass::test_method -v`
