@@ -7,38 +7,13 @@ from pathlib import Path
 
 import anthropic
 
+from pipeline.frontmatter import read_frontmatter
 from pipeline.scratchpad import Scratchpad
 from pipeline.tracing import get_tracer
 
 _tracer = get_tracer(__name__)
 
-VALID_CATEGORIES: frozenset[str] = frozenset(
-    {"Architecture", "CI&T", "Cloud", "Coding", "ML & AI"}
-)
 _UNKNOWN = "unknown"
-
-CATEGORY_DESCRIPTIONS: dict[str, str] = {
-    "Architecture": "software design, system architecture, patterns, technical diagrams, ADRs",
-    "CI&T": "corporate knowledge, internal processes, methodology, organisational guidelines, agile practices",
-    "Cloud": "cloud computing, AWS, Azure, GCP, infrastructure as code, DevOps, containers",
-    "Coding": "programming, development, algorithms, software engineering, code reviews, debugging",
-    "ML & AI": "machine learning, artificial intelligence, data science, neural networks, LLMs, NLP",
-    "unknown": "use only when the content genuinely does not fit any category above",
-}
-
-_all_names = ", ".join(list(VALID_CATEGORIES) + [_UNKNOWN])
-_category_lines = "\n".join(f"- {k}: {v}" for k, v in CATEGORY_DESCRIPTIONS.items())
-_SYSTEM_PROMPT = f"""\
-You are a document classifier. Given a filename and a short excerpt,
-respond with ONLY one of the following category names — nothing else:
-
-{_all_names}
-
-Categories:
-{_category_lines}
-
-Output the category name only. No punctuation. No explanation.\
-"""
 
 
 class ClassificationAgent:
@@ -47,6 +22,27 @@ class ClassificationAgent:
         self._scratchpad = scratchpad
         self._client = anthropic.AsyncAnthropic()
         self._model = os.environ["LIGHT_MODEL"]
+        self._valid_categories = self._discover_categories()
+        self._system_prompt = self._build_system_prompt()
+
+    def _discover_categories(self) -> frozenset[str]:
+        dirs = [p.name for p in self._vault_root.iterdir() if p.is_dir()]
+        if not dirs:
+            self._scratchpad.warn(
+                "No subdirectories found in vault root — classification will be skipped",
+                context={"vault_root": str(self._vault_root)},
+            )
+            return frozenset()
+        return frozenset(dirs)
+
+    def _build_system_prompt(self) -> str:
+        all_names = ", ".join(sorted(self._valid_categories) + [_UNKNOWN])
+        return (
+            f"You are a document classifier. Given a filename and a short excerpt or summary,\n"
+            f"respond with ONLY one of the following category names — nothing else:\n\n"
+            f"{all_names}\n\n"
+            f"Output the category name only. No punctuation. No explanation."
+        )
 
     async def classify(self, md_path: Path) -> bool:
         """Classify one .md file and move it to the matching vault folder.
@@ -56,8 +52,15 @@ class ClassificationAgent:
         """
         with _tracer.start_as_current_span("classify") as span:
             span.set_attribute("document.name", md_path.name)
-            content = md_path.read_text(encoding="utf-8").strip()
-            user_message = f"Filename: {md_path.stem}\n\n{content[:500]}"
+
+            fm = read_frontmatter(md_path)
+            if fm:
+                summary = fm.get("summary", "")
+                tags = ", ".join(fm.get("tags") or [])
+                user_message = f"Filename: {md_path.stem}\n\nSummary: {summary}\nTags: {tags}"
+            else:
+                content = md_path.read_text(encoding="utf-8").strip()
+                user_message = f"Filename: {md_path.stem}\n\n{content[:500]}"
 
             api_error = False
             t0 = time.monotonic()
@@ -65,7 +68,7 @@ class ClassificationAgent:
                 response = await self._client.messages.create(
                     model=self._model,
                     max_tokens=20,
-                    system=_SYSTEM_PROMPT,
+                    system=self._system_prompt,
                     messages=[{"role": "user", "content": user_message}],
                 )
             except Exception as exc:
@@ -94,7 +97,7 @@ class ClassificationAgent:
                 )
                 return False
 
-            if category not in VALID_CATEGORIES:
+            if category not in self._valid_categories:
                 span.set_attribute("eval.classified", False)
                 self._scratchpad.warn(
                     f"Unexpected classification response '{category}': {md_path.name}",
