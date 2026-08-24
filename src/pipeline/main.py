@@ -6,6 +6,7 @@ import os
 import sys
 from pathlib import Path
 
+from pipeline.analysis import AnalysisAgent
 from pipeline.classification import ClassificationAgent
 from pipeline.exceptions import PipelineError
 from pipeline.extraction import Extractor
@@ -46,6 +47,7 @@ def main() -> None:
     _tracer = get_tracer(__name__)
 
     extractor = Extractor(scratchpad)
+    analyzer = AnalysisAgent(scratchpad)
     vault_root = _resolve_vault_root(scratchpad)
     classifier = ClassificationAgent(vault_root, scratchpad) if vault_root else None
 
@@ -73,6 +75,8 @@ def main() -> None:
                 scratchpad.error(f"Failed: {relative}: {exc}", context=exc.to_dict())
                 print(f"  ERROR: {exc}", file=sys.stderr)
                 return
+
+            await analyzer.analyze(output_path)
 
             if classifier:
                 await classifier.classify(output_path)
