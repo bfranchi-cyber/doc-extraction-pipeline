@@ -1,90 +1,123 @@
-# Component Dependencies — Extraction Pipeline
+# Component Dependencies — Analysis Step & Classify Refactor (2026-08-21)
 
 ## Dependency Matrix
 
-| Component | Depends On | Communication Pattern |
-|---|---|---|
-| `PipelineCoordinator` | `Config`, `ManifestStore`, `IngestionAgent`, `ExtractionAgent`, `AnalysisAgent`, `ExportAgent` | Direct async calls; owns all stage interactions |
-| `IngestionAgent` | `Config`, `ManifestStore`, Google Drive API / Drive MCP | Async HTTP (Drive API); sync manifest read |
-| `ExtractionAgent` | `Config`, Claude Haiku 4.5 (Anthropic SDK), `python-docx`, `pypdf` | Async HTTP (Claude API); sync file parse |
-| `AnalysisAgent` | `CompactArtifact` (data type), Claude Sonnet 4.5 (Anthropic SDK) | Async HTTP (Claude API); in-memory data |
-| `ExportAgent` | `Config`, `ManifestStore`, file system | Sync file I/O; sync manifest write |
-| `ManifestStore` | `Config` (manifest_dir path), file system | Sync file I/O only |
-| `Config` | `config.toml` (file system) | Loaded once at startup; read-only everywhere |
+| Component | Imports / Depends On |
+|---|---|
+| `main.py` | `Extractor`, `AnalysisAgent` (NEW), `ClassificationAgent`, `Scratchpad`, `tracing` |
+| `AnalysisAgent` | `frontmatter.write_frontmatter` (NEW), `Scratchpad`, `tracing`, `anthropic` SDK |
+| `ClassificationAgent` | `frontmatter.read_frontmatter` (NEW), `Scratchpad`, `tracing`, `anthropic` SDK |
+| `frontmatter` utility | `yaml` stdlib, `pathlib` stdlib |
+| `Extractor` | `Scratchpad`, FastMCP, `anthropic` SDK |
+| `EvalAgent` | `Scratchpad`, `anthropic` SDK, vault filesystem (at init via `OBSIDIAN_VAULT_PATH`) |
+| `models.py` | No internal imports (pure data types) |
+
+No circular dependencies.
 
 ---
 
-## Data Flow
+## Data Flow Diagram
 
 ```
-[Google Drive]
-     |
-     | DriveFileMetadata list
-     v
-PipelineCoordinator
-     |
-     | DriveFileMetadata + local_path (per doc, concurrent)
-     v
-ExtractionAgent (one instance per doc)
-     |
-     | CompactArtifact (in-memory TypedDict)
-     v
-PipelineCoordinator  ← validates handoff
-     |
-     | CompactArtifact
-     v
-AnalysisAgent
-     |
-     | EnrichedDocument (in-memory dataclass)
-     v
-PipelineCoordinator  ← validates handoff
-     |
-     | EnrichedDocument + staged image paths
-     v
-ExportAgent
-     |
-     ├─► Vault .md file (file system)
-     ├─► Images folder (file system)
-     └─► ManifestStore (per-doc JSON file)
+.docx file
+    |
+    v
+[Extractor.process()]
+    |
+    v
+.md file (raw extracted text written to --output/)
+    |
+    v
+[AnalysisAgent.analyze()]
+    |
+    +--> calls frontmatter.write_frontmatter()
+    |
+    v
+.md file (YAML frontmatter prepended)
+    |
+    ---
+    summary: "..."
+    tags: [...]
+    confidence: 0.9
+    ---
+    <original extracted text>
+    |
+    v
+[ClassificationAgent.classify()]
+    |
+    +--> calls frontmatter.read_frontmatter()  ---> summary + tags
+    |    (fallback: raw text excerpt if None)
+    |
+    +--> LLM call (LIGHT_MODEL)
+    |
+    +--> _move_to_vault()
+    |
+    v
+vault/{category}/{filename}.md
 ```
 
 ---
 
-## External Dependencies
+## Key Decoupling Changes
 
-| External System | Used By | Protocol |
-|---|---|---|
-| Google Drive API | `IngestionAgent` | HTTPS (via Drive MCP or `google-api-python-client`) |
-| Claude Haiku 4.5 | `ExtractionAgent` | HTTPS (Anthropic Python SDK async) |
-| Claude Sonnet 4.5 | `AnalysisAgent` | HTTPS (Anthropic Python SDK async) |
-| Local file system | `ExtractionAgent`, `ExportAgent`, `ManifestStore`, `Config` | OS file I/O |
-| OAuth 2.0 token store | `IngestionAgent` | Local JSON file, managed by `google-auth` |
+### Before this iteration
+
+```
+classification.py
+    VALID_CATEGORIES = frozenset({"Architecture", ...})    # hard-coded
+    CATEGORY_DESCRIPTIONS = {...}                          # hard-coded
+
+eval_agent.py
+    from pipeline.classification import VALID_CATEGORIES   # tight coupling
+    from pipeline.classification import CATEGORY_DESCRIPTIONS
+```
+
+### After this iteration
+
+```
+classification.py
+    # No module-level constants
+    ClassificationAgent.__init__() discovers categories from vault subfolders
+
+eval_agent.py
+    # No import from classification.py
+    EvalAgent.__init__(vault_root) discovers categories from vault subfolders independently
+
+frontmatter.py  (NEW)
+    # Shared by AnalysisAgent and ClassificationAgent
+    read_frontmatter(path) -> dict | None
+    write_frontmatter(path, data) -> None
+```
+
+### Communication Pattern
+
+All inter-agent communication happens via the filesystem (`.md` files).
+No direct method calls between agents. Orchestration through `main.py` only.
+
+```
+main.py
+  |-- instantiates --> AnalysisAgent
+  |-- instantiates --> ClassificationAgent
+  |-- instantiates --> Extractor
+  |
+  process_one():
+    extractor  --[file write]--> md_path
+    analyzer   --[file write]--> md_path (frontmatter prepend)
+    classifier --[file move]-->  vault/{category}/
+```
 
 ---
 
-## Coupling Notes
+## Affected Files Summary
 
-- **PipelineCoordinator → all agents**: High coupling by design — the Coordinator is the hub that owns the pipeline flow. This is intentional.
-- **ExtractionAgent → AnalysisAgent**: Zero direct coupling. Communication happens through `CompactArtifact` passed via the Coordinator. Agents never call each other directly.
-- **ExportAgent → ManifestStore**: Sequential (not concurrent) writes, so no locking is needed.
-- **Config**: Injected into all components at construction time; never mutated after startup.
-
----
-
-## Concurrency Boundaries
-
-```
-Sequential (Coordinator driven):
-  Ingestion → [batch of docs] → Export
-
-Concurrent (asyncio.gather within batch):
-  ExtractionAgent(doc_1) ──┐
-  ExtractionAgent(doc_2) ──┤──► (all awaited together)
-  ExtractionAgent(doc_N) ──┘
-
-Sequential per document (chained coroutines):
-  download → extract → analyse → export
-  (each doc's chain runs independently but concurrently with other docs' chains)
-```
-
-Analysis and Export run sequentially **per document** — the Coordinator awaits each stage before moving to the next for that document, but multiple documents progress through their chains concurrently.
+| File | Change |
+|---|---|
+| `src/pipeline/analysis.py` | NEW — AnalysisAgent |
+| `src/pipeline/frontmatter.py` | NEW — shared frontmatter utility |
+| `src/pipeline/models.py` | UPDATE — add `AnalysisResult` TypedDict |
+| `src/pipeline/classification.py` | UPDATE — dynamic discovery, frontmatter context, remove VALID_CATEGORIES |
+| `src/pipeline/main.py` | UPDATE — instantiate AnalysisAgent, call analyze() in process_one() |
+| `src/eval/eval_agent.py` | UPDATE — accept vault_root, discover categories dynamically |
+| `tests/unit/test_analysis.py` | NEW — AnalysisAgent unit tests |
+| `tests/unit/test_frontmatter.py` | NEW — frontmatter utility tests |
+| `tests/unit/test_classification.py` | UPDATE — frontmatter path + fallback path + dynamic discovery |

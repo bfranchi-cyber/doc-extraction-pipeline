@@ -5,7 +5,8 @@
 - **Start Date**: 2026-08-07T00:00:00Z
 - **Scope Change**: 2026-08-14T00:00:00Z — Google Drive / OAuth / PDF / categories / images / manifest dropped. Scope narrowed to local .docx → .md extraction.
 - **New Iteration**: 2026-08-17T00:00:00Z — Phoenix tracing + eval metrics for ClassificationAgent
-- **Current Stage**: CONSTRUCTION — Build and Test COMPLETED → Operations (placeholder)
+- **New Iteration**: 2026-08-21T00:00:00Z — Analysis step + Classify refactor
+- **Current Stage**: CONSTRUCTION — Code Generation COMPLETED → Build and Test
 
 ## Workspace State
 - **Existing Code**: Yes
@@ -17,12 +18,36 @@
 - **Documentation**: aidlc-docs/ only
 - **Structure patterns**: See code-generation.md Critical Rules
 
-## Extension Configuration
+## Extension Configuration (Analysis + Classify Refactor — 2026-08-21)
 | Extension | Enabled | Decided At |
 |---|---|---|
 | Security Baseline | No | Requirements Analysis |
 | Resiliency Baseline | No | Requirements Analysis |
-| Property-Based Testing | Partial (PBT-02, 07, 08) | Requirements Analysis |
+| Property-Based Testing | Partial (pure functions + serialization round-trips) | Requirements Analysis |
+
+## Stage Progress (Analysis + Classify Refactor — 2026-08-21)
+
+### INCEPTION PHASE
+- [x] Workspace Detection — COMPLETED
+- [x] Reverse Engineering — COMPLETED (refreshed artifacts)
+- [x] Requirements Analysis — COMPLETED
+- [-] User Stories — SKIPPED (single developer, requirements clear)
+- [x] Workflow Planning — COMPLETED
+- [x] Application Design — COMPLETED
+- [-] Units Generation — SKIPPED (single unit)
+
+### CONSTRUCTION PHASE (Unit: Analysis + Classify Refactor)
+- [-] Functional Design — TBD
+- [-] NFR Requirements — TBD
+- [-] NFR Design — TBD
+- [-] Infrastructure Design — TBD
+- [x] Code Generation — COMPLETED
+- [ ] Build and Test — PENDING
+
+### OPERATIONS PHASE
+- [-] Operations — PLACEHOLDER
+
+---
 
 ## Stage Progress (Phoenix Tracing & Eval — 2026-08-17)
 

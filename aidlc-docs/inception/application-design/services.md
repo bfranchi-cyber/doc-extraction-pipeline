@@ -1,107 +1,55 @@
-# Services — Extraction Pipeline
+# Services — Analysis Step & Classify Refactor (2026-08-21)
 
-## Service Layer Overview
+## Overview
 
-The pipeline has a thin, explicit service layer. Rather than a generic service bus, each inter-component interaction is a direct, typed function call or method invocation coordinated by `PipelineCoordinator`. The services below describe the orchestration responsibilities.
+The pipeline has no explicit service layer — `main.py` directly coordinates the agents as an
+orchestration script. This document captures the orchestration flow and instantiation contract.
 
 ---
 
-## Service: PipelineOrchestrationService (PipelineCoordinator)
+## Pipeline Orchestration Service (`src/pipeline/main.py`)
 
-**Purpose**: Controls the end-to-end execution sequence. Holds all pipeline-level state for a single run.
-
-**Orchestration Pattern**: Fixed linear prompt chain with Coordinator as inter-phase hub.
+### Updated Orchestration Flow
 
 ```
-run() sequence:
-  1. Load config, initialize ManifestStore and scratchpad
-  2. Call IngestionAgent.discover_eligible_files()  → list[DriveFileMetadata]
-  3. validate_handoff(ingestion output)
-  4. For each DriveFileMetadata:
-       a. Call IngestionAgent.download_file()       → local Path
-       b. Instantiate ExtractionAgent, call process() → CompactArtifact | ExtractionError
-       c. validate_handoff(extraction output)
-       d. Call AnalysisAgent.enrich_document()      → EnrichedDocument
-       e. validate_handoff(analysis output)
-       f. Call ExportAgent.export()                 → ExportResult
-       g. log stage transitions and outcomes
-  5. Write run summary to scratchpad
-  6. Return RunSummary
+process_one(docx_path):
+  1. artifact = await extractor.process(docx_path)        # extract text from .docx
+  2. output_path.write_text(artifact["extracted_text"])    # write raw .md file
+  3. await analyzer.analyze(output_path)                   # inject YAML frontmatter (NEW)
+  4. if classifier:
+         await classifier.classify(output_path)           # classify + move to vault
 ```
 
-**Async strategy**: Steps 4a–4g run concurrently for all documents via `asyncio.gather` (one `ExtractionAgent` instance per document, steps b–f run as a coroutine chain per document).
+Each `process_one()` coroutine is independent. All are launched concurrently via `asyncio.gather`.
 
----
+### Agent Instantiation
 
-## Service: DriveAccessService (IngestionAgent module)
-
-**Purpose**: Encapsulates all Google Drive API interactions — authentication, file listing, and file downloading.
-
-**Interactions**:
-- Uses `google-auth` + `google-api-python-client` (or Drive MCP) for OAuth 2.0 token management
-- Token stored at `config.credentials_path`; refreshed automatically on expiry
-- All Drive API calls respect rate-limit responses (wait `retry-after` before retrying)
-
----
-
-## Service: ExtractionService (ExtractionAgent class)
-
-**Purpose**: Encapsulates per-document text parsing and LLM-based extraction/classification. Stateless between documents — one instance per document, discarded after `process()` returns.
-
-**Interactions**:
-- Calls Claude Haiku 4.5 via Anthropic SDK (`anthropic.AsyncAnthropic`)
-- Delegates local file parsing to `python-docx` (`.docx`) and `pypdf` (`.pdf`)
-- Writes image binaries to `config.staging_dir` — no image data passed upstream
-
----
-
-## Service: AnalysisService (AnalysisAgent module)
-
-**Purpose**: Stateless enrichment service. Takes a `CompactArtifact`, calls Claude Sonnet 4.5, returns `EnrichedDocument`.
-
-**Interactions**:
-- Calls Claude Sonnet 4.5 via Anthropic SDK
-- No file system access — operates entirely in memory
-
----
-
-## Service: ExportService (ExportAgent module)
-
-**Purpose**: Writes pipeline outputs to disk. Final step before manifest update.
-
-**Interactions**:
-- Writes `.md` file to `config.vault_path/{category}/`
-- Moves images from `config.staging_dir` to `config.images_path/{doc_name}/`
-- Calls `ManifestStore.set()` to record success
-
----
-
-## Service: ManifestService (ManifestStore class)
-
-**Purpose**: Idempotency store. One JSON file per Drive document in `config.manifest_dir`. No locking needed — all manifest writes happen sequentially via `ExportAgent` (one document at a time in the export step).
-
-**Interactions**:
-- File system only; no external dependencies
-- Used by `IngestionAgent` (read — check if already processed) and `ExportAgent` (write — record outcome)
-
----
-
-## Service Interaction Summary
-
+```python
+extractor  = Extractor(scratchpad)
+analyzer   = AnalysisAgent(scratchpad)                        # NEW
+vault_root = _resolve_vault_root(scratchpad)
+classifier = ClassificationAgent(vault_root, scratchpad) if vault_root else None
 ```
-PipelineCoordinator
-  │
-  ├─► DriveAccessService (IngestionAgent)
-  │       └─► ManifestStore [read — skip check]
-  │
-  ├─► ExtractionService (ExtractionAgent) [concurrent, one per doc]
-  │       ├─► python-docx / pypdf [local parse]
-  │       └─► Claude Haiku 4.5 [extract + classify]
-  │
-  ├─► AnalysisService (AnalysisAgent)
-  │       └─► Claude Sonnet 4.5 [enrich]
-  │
-  └─► ExportService (ExportAgent)
-          ├─► File system [write .md, move images]
-          └─► ManifestStore [write — record outcome]
+
+- `ClassificationAgent.__init__()` discovers vault categories synchronously at instantiation
+- No `AnalysisAgent` is conditionally skipped — it always runs if the step is reached
+
+### Failure Isolation
+
+Each step is fail-soft:
+- If `analyze()` returns `None` (failure): `classify()` still runs using the fallback raw-text path
+- If `classify()` returns `False`: file stays in `--output` directory (unchanged behavior)
+- Failures logged to `scratchpad.jsonl`; pipeline continues with remaining documents
+
+---
+
+## Eval Orchestration Service (`src/eval/eval_main.py`)
+
+Minor update: `EvalAgent` constructor now receives `vault_root` instead of reading from `VALID_CATEGORIES` import.
+
+```python
+vault_root = Path(os.environ["OBSIDIAN_VAULT_PATH"]) if os.environ.get("OBSIDIAN_VAULT_PATH") else None
+eval_agent = EvalAgent(vault_root=vault_root, scratchpad=scratchpad)
 ```
+
+No changes to eval orchestration loop or CLI interface.

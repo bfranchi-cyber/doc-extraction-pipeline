@@ -3,59 +3,40 @@
 ## Business Context Diagram
 
 ```
-+------------------+      .docx files      +---------------------------+
-|  User / Operator | --------------------> | docs-extraction CLI       |
-+------------------+                       | (--input / --output)      |
-                                           +---------------------------+
-                                                       |
-                                          +------------+-------------+
-                                          |                          |
-                                   Extracted .md             Classify + Move
-                                          |                          |
-                                   +------+------+        +----------+--------+
-                                   | Output dir  |        | Anthropic API     |
-                                   | (--output)  |        | (LIGHT_MODEL)     |
-                                   +-------------+        +-------------------+
-                                                                   |
-                                                        +----------+--------+
-                                                        | Obsidian Vault    |
-                                                        | (OBSIDIAN_VAULT_  |
-                                                        |  PATH)            |
-                                                        +-------------------+
++-----------------------------------------------------------+
+|                   docs-extraction System                  |
+|                                                           |
+|  [.docx files] --> [Extractor] --> [ClassificationAgent]  |
+|                                         |                 |
+|                                   [Obsidian Vault]        |
+|                                                           |
+|  [EvalAgent] <-- [Phoenix] <-- [OTEL Spans]               |
+|       |                                                   |
+|  [Anthropic Claude] (judge)                               |
++-----------------------------------------------------------+
 ```
 
 ## Business Description
 
-- **Business Description**: A local command-line tool that transforms Microsoft Word (`.docx`) documents into Markdown files and optionally organises them into an Obsidian knowledge vault by category.
+- **Business Description**: A local CLI pipeline that converts `.docx` Word documents into Markdown files and automatically classifies them into domain-specific knowledge categories in an Obsidian vault. An evaluation subsystem uses AI-as-judge via Phoenix telemetry to measure classification quality.
 - **Business Transactions**:
-  1. **Extract** — Scan an input folder recursively, convert each `.docx` to plain Markdown text, write to a mirrored output folder.
-  2. **Classify** — For each extracted `.md` file, call an LLM (Claude Haiku) with a short excerpt; receive a category label; move the file to the matching Obsidian vault sub-folder.
-  3. **Log** — Write structured JSONL entries (INFO / WARN / ERROR) to a `scratchpad.jsonl` file for every pipeline event.
+  1. **Document Extraction**: Scan a folder of `.docx` files, extract their text content, write `.md` files to an output directory (mirroring source structure).
+  2. **Document Classification**: For each extracted `.md` file, use an LLM (Claude, LIGHT_MODEL) to categorise the document into one of: Architecture, CI&T, Cloud, Coding, ML & AI, or unknown. Move the file into the matching Obsidian vault subfolder.
+  3. **Span Tracing**: All extract and classify operations emit OpenTelemetry spans to a local Phoenix server for observability and latency tracking.
+  4. **Classification Evaluation**: Query Phoenix for recorded classify spans, have a second LLM (Claude, MEDIUM_MODEL) judge each classification as correct/incorrect, and write evaluation results back to Phoenix.
 - **Business Dictionary**:
-  - **Vault** — The Obsidian folder hierarchy at `OBSIDIAN_VAULT_PATH`; contains sub-folders matching the known categories.
-  - **Category** — One of: `Architecture`, `CI&T`, `Cloud`, `Coding`, `ML & AI`, `unknown`.
-  - **CompactArtifact** — In-memory handoff between Extractor and ClassificationAgent; carries `document_name` + `extracted_text`.
-  - **Scratchpad** — Append-only JSONL log file written to the output directory.
-  - **LIGHT_MODEL** — Environment variable naming the cheap/fast LLM used for classification.
+  - **Vault**: An Obsidian knowledge base folder with pre-existing category subfolders.
+  - **Scratchpad**: A JSONL log file written alongside output files; captures INFO/WARN/ERROR events.
+  - **Span**: An OpenTelemetry trace unit capturing a single classify or extract operation, its attributes, and latency.
+  - **Eval / Judge**: The AI-as-judge process that retroactively assesses classification correctness.
+  - **LIGHT_MODEL / MEDIUM_MODEL**: Environment variables controlling which Claude model is used for classification vs. evaluation respectively.
 
 ## Component Level Business Descriptions
 
-### CLI Entry Point (`main.py`)
-- **Purpose**: Orchestrates the full pipeline for a batch of `.docx` files.
-- **Responsibilities**: Parse CLI args, discover `.docx` files, drive Extractor + ClassificationAgent, surface errors to stderr.
+### pipeline (src/pipeline/)
+- **Purpose**: Core document processing — extract text from Word files and classify documents into Obsidian vault categories.
+- **Responsibilities**: CLI entry point, extraction, classification, structured error handling, JSONL logging, OTEL span emission.
 
-### Extractor (`extraction.py`)
-- **Purpose**: Converts a single `.docx` file into plain Markdown text.
-- **Responsibilities**: Open file with mammoth, strip whitespace, return `CompactArtifact`; raise `PipelineError` on failure.
-
-### ClassificationAgent (`classification.py`)
-- **Purpose**: Assigns an Obsidian category to a `.md` file and moves it to the vault.
-- **Responsibilities**: Build a short user message (filename + 500-char excerpt), call Anthropic API, validate response, call `_move_to_vault`; log warnings on unknown/missing-folder cases.
-
-### Scratchpad (`scratchpad.py`)
-- **Purpose**: Structured append-only event log.
-- **Responsibilities**: Write JSONL entries with timestamp, level, message, and optional context dict.
-
-### MCP Extraction Server (`extraction_server.py`)
-- **Purpose**: Exposes the DOCX parsing capability as a FastMCP tool (`parse_document`).
-- **Responsibilities**: Wrap mammoth in an async MCP tool; raise `PipelineError` on failure. (Present in codebase; not yet wired into the active CLI pipeline.)
+### eval (src/eval/)
+- **Purpose**: Evaluate the quality of past classification decisions using AI-as-judge against Phoenix telemetry data.
+- **Responsibilities**: Connect to Phoenix, fetch classify spans, invoke Claude to judge each classification, write evaluation labels back to Phoenix.

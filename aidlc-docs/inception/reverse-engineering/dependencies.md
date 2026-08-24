@@ -3,56 +3,80 @@
 ## Internal Dependencies
 
 ```
-main.py
-  |-> extraction.py    (Extractor)
-  |-> classification.py (ClassificationAgent)
-  |-> scratchpad.py    (Scratchpad)
-  |-> exceptions.py    (PipelineError)
+eval.eval_main
+    --> eval.eval_agent
+            --> pipeline.classification (CATEGORY_DESCRIPTIONS, VALID_CATEGORIES)
+            --> anthropic (AsyncAnthropic)
+            --> arize-phoenix (px.Client, px.Evaluation)
 
-extraction.py
-  |-> models.py        (CompactArtifact)
-  |-> exceptions.py    (PipelineError)
-  |-> scratchpad.py    (Scratchpad)
+pipeline.main
+    --> pipeline.extraction
+    --> pipeline.classification
+    --> pipeline.tracing
+    --> pipeline.scratchpad
+    --> pipeline.exceptions
 
-extraction_server.py
-  |-> exceptions.py    (PipelineError)
-  |-> scratchpad.py    (Scratchpad)
+pipeline.extraction
+    --> pipeline.models (CompactArtifact)
+    --> pipeline.tracing (get_tracer)
+    --> pipeline.scratchpad
+    --> mammoth (via asyncio.to_thread)
 
-classification.py
-  |-> scratchpad.py    (Scratchpad)
+pipeline.classification
+    --> pipeline.scratchpad
+    --> pipeline.tracing (get_tracer)
+    --> anthropic (AsyncAnthropic)
 
-models.py
-  |-> exceptions.py    (re-exports PipelineError, ExtractionPipelineError)
+pipeline.extraction_server
+    --> pipeline.exceptions
+    --> pipeline.scratchpad
+    --> mcp.server.fastmcp (FastMCP)
+    --> mammoth
+
+pipeline.tracing
+    --> opentelemetry.trace
+    --> arize-phoenix (px.launch_app)
+    --> arize-phoenix-otel (register)
+    --> openinference-instrumentation-anthropic (AnthropicInstrumentor)
+
+pipeline.scratchpad  -- no internal deps
+pipeline.models      -- no internal deps
+pipeline.exceptions  -- no internal deps
 ```
 
 ## External Dependencies
 
-### anthropic[mcp]
-- **Version**: `>=0.25`
-- **Purpose**: HTTP client for Anthropic Messages API; used in `ClassificationAgent`
+### anthropic (>=0.25)
+- **Purpose**: LLM API for classification and eval judging
+- **Usage**: `anthropic.AsyncAnthropic()` in ClassificationAgent and EvalAgent
 - **License**: MIT
 
-### mcp
-- **Version**: `>=1.8,<2.0`
-- **Purpose**: FastMCP server framework; used in `extraction_server.py`
-- **License**: MIT
-
-### mammoth
-- **Version**: `>=1.6`
-- **Purpose**: Converts `.docx` binary format to plain text; used in `Extractor` and `extraction_server`
+### mammoth (>=1.6)
+- **Purpose**: .docx text extraction
+- **Usage**: `mammoth.extract_raw_text(f).value` in Extractor and extraction_server
 - **License**: BSD-2-Clause
 
-### pytest
-- **Version**: `>=7.0` (dev)
-- **Purpose**: Test runner
+### mcp (>=1.8,<2.0)
+- **Purpose**: MCP server framework
+- **Usage**: `FastMCP` in extraction_server.py
 - **License**: MIT
 
-### pytest-cov
-- **Version**: `>=4.0` (dev)
-- **Purpose**: Coverage measurement and reporting
-- **License**: MIT
+### arize-phoenix (>=4.0)
+- **Purpose**: Local OTEL telemetry collector + evaluation storage; `px.Client` for span querying
+- **Usage**: `px.launch_app()`, `px.Client`, `px.Evaluation`, `px.EvaluationResult`
+- **License**: Apache-2.0
 
-### hypothesis
-- **Version**: `>=6.0` (dev)
-- **Purpose**: Property-based test generation
-- **License**: MPL-2.0
+### arize-phoenix-otel (>=0.6)
+- **Purpose**: Phoenix OTEL provider registration
+- **Usage**: `register(project_name=..., endpoint=...)` in tracing.setup_tracing()
+- **License**: Apache-2.0
+
+### openinference-instrumentation-anthropic (>=0.1)
+- **Purpose**: Auto-instrument Anthropic SDK calls as OTEL spans
+- **Usage**: `AnthropicInstrumentor().instrument()` in tracing.setup_tracing()
+- **License**: Apache-2.0
+
+### opentelemetry (transitive via phoenix-otel)
+- **Purpose**: OTEL SDK — tracer, span context manager
+- **Usage**: `opentelemetry.trace.get_tracer()`, `_tracer.start_as_current_span(...)`
+- **License**: Apache-2.0

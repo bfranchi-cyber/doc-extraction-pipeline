@@ -1,103 +1,119 @@
-# Application Design Plan — Extraction Pipeline
+# Application Design Plan
 
-Please answer each question by filling in the letter choice after the `[Answer]:` tag.
+## Scope
+Analysis step + Classify refactor — new `AnalysisAgent`, updated `ClassificationAgent`, updated orchestration, eval decoupling.
+
+## Plan Checkboxes
+
+- [x] Answer design questions (below)
+- [x] Generate components.md
+- [x] Generate component-methods.md
+- [x] Generate services.md
+- [x] Generate component-dependency.md
+- [x] Generate application-design.md (consolidated)
 
 ---
 
-## Question 1
-How should the Coordinator Agent be implemented?
+## Design Questions
 
-A) A stateful Python class that holds the scratchpad in memory and is instantiated once per pipeline run
+Please fill in the `[Answer]:` tag after each question. Let me know when done.
 
-B) A standalone async function (no persistent class state) that receives structured outputs and constructs the next stage's input, with scratchpad written directly to a log file
+---
 
-C) A Claude agent call — the Coordinator is itself an LLM call that receives structured stage outputs and decides what to do next
+### Q1 — AnalysisAgent: component location
+Where should AnalysisAgent live?
 
-D) Other (please describe after [Answer]: tag below)
+A) New file `src/pipeline/analysis.py` — mirrors the ClassificationAgent pattern (one class per file)
+
+B) Inline in `main.py` as a function — simpler, no new file, but mixes orchestration with business logic
+
+C) Other (describe below)
+
+**Tradeoffs**:
+- A keeps the codebase consistent and testable in isolation
+- B reduces file count but makes main.py harder to read and test
 
 [Answer]: A
 
 ---
 
-## Question 2
-How should the compact artifact (the structured handoff from Extraction to Analysis) be represented?
+### Q2 — AnalysisAgent: LLM model (DD-1)
+Which model should AnalysisAgent use?
 
-A) A Python dataclass / TypedDict — validated in-process, passed as a Python object between agent functions
+A) `LIGHT_MODEL` env var — same as ClassificationAgent; fast and cheap, may produce lower-quality summaries
 
-B) A JSON file written to disk — each extraction agent writes its result to disk, the Coordinator reads and validates it before passing to Analysis
+B) `MEDIUM_MODEL` env var — reuse existing env var; more capable for structured analysis
 
-C) A JSON string passed in-memory — serialized/deserialized between stages but never written to disk
+C) New `ANALYSIS_MODEL` env var — fully flexible, adds one more env var to configure
 
-D) Other (please describe after [Answer]: tag below)
+**Tradeoffs**:
+- A/B reuse existing env vars (simpler ops)
+- C gives independent control but adds config surface
+- LIGHT_MODEL is designed for short, fast responses; MEDIUM_MODEL better for reasoning tasks
+
+[Answer]: B
+
+---
+
+### Q3 — AnalysisAgent: structured output method (DD-2)
+How should AnalysisAgent enforce the `{summary, tags, confidence}` schema?
+
+A) Anthropic tool-use / structured output (force the model to call a tool with the exact schema) — guarantees schema compliance, slightly more complex prompt setup
+
+B) JSON in system prompt + `json.loads()` parse — simpler code; brittle if model produces markdown fencing or prose; needs retry or fallback logic
+
+C) Other (describe below)
 
 [Answer]: A
 
 ---
 
-## Question 3
-How should the Extraction Agents be structured?
+### Q4 — Dynamic category discovery: timing (DD-4)
+When should `ClassificationAgent` scan the vault for category folders?
 
-A) One reusable async function called concurrently for each document via `asyncio.gather`
+A) Once per pipeline run — scan at instantiation time, cache the list; fast, deterministic, won't pick up folders added mid-run
 
-B) A class with a `process(document)` async method, one instance per document, all instantiated and awaited together
+B) Per-classify call — always fresh; handles vault changes during long runs; tiny extra filesystem stat per document
 
-C) A pool pattern — a fixed number of worker coroutines pulling from an async queue of documents
+[Answer]: A
 
-D) Other (please describe after [Answer]: tag below)
+---
+
+### Q5 — Confidence threshold behaviour (DD-5)
+Should the `confidence` value from AnalysisAgent affect whether classification is attempted?
+
+A) Informational only — always attempt classification regardless of confidence; confidence is written to frontmatter for human review only
+
+B) Hard threshold — skip classification if `confidence < 0.5` (or another value); reduces noise but may silently skip valid documents
+
+C) Soft threshold with warning — attempt classification always, but log a Scratchpad warning when `confidence < 0.5`
+
+[Answer]: A but futurely after confirming that the confidence is correctly calibrated we implement a hard threshold
+
+---
+
+### Q6 — Eval decoupling from VALID_CATEGORIES (DD-3)
+`eval_agent.py` currently imports `VALID_CATEGORIES` and `CATEGORY_DESCRIPTIONS` from `classification.py` to build the judge prompt. With dynamic categories this breaks. How should it be handled?
+
+A) Keep `CATEGORY_DESCRIPTIONS` as a static dict in `classification.py` alongside dynamic discovery — eval imports it as before; descriptions are manually maintained when vault folders change
+
+B) EvalAgent reads the vault at eval time to get current categories — fully dynamic, requires `OBSIDIAN_VAULT_PATH` to be set when running eval
+
+C) Pass discovered categories into `EvalAgent` as a constructor argument — explicit dependency, most testable
+
+D) Remove category descriptions from the judge prompt entirely — eval only judges "does the classification make sense for the document?" without needing a category list
 
 [Answer]: B
 
 ---
 
-## Question 4
-Where should configuration (vault path, images path, manifest path, Drive folder ID, category list) live?
+### Q7 — Frontmatter reading in ClassificationAgent
+How should `ClassificationAgent` read the YAML frontmatter written by AnalysisAgent?
 
-A) A `.env` file loaded at startup via `python-dotenv`
+A) Inline parsing inside `classify()` — read the file, strip the `---` block, parse with `yaml` stdlib; simple, self-contained
 
-B) A `config.yaml` or `config.toml` file parsed at startup
+B) Shared utility function in `pipeline/models.py` or a new `pipeline/frontmatter.py` — reusable across agents; slight extra indirection
 
-C) Hard-coded constants in a dedicated `config.py` module
+C) Pass the analysis result (summary + tags) directly as a parameter to `classify()` rather than re-reading the file — avoids file I/O, tighter coupling between caller (main.py) and agents
 
-D) Other (please describe after [Answer]: tag below)
-
-[Answer]: B
-
----
-
-## Question 5
-How should the manifest (idempotency state) be managed — particularly around concurrent writes during parallel extraction?
-
-A) Sequential manifest writes only — all manifest updates happen after the async extraction batch completes, not during
-
-B) Per-document manifest file (one JSON file per Drive file ID) — no concurrent write conflicts possible
-
-C) Async-safe single manifest with file locking (e.g., `filelock` library) for concurrent access
-
-D) Other (please describe after [Answer]: tag below)
-
-[Answer]: B
-
----
-
-## Execution Checklist
-
-- [x] Step 1: Analyze context (requirements.md, stories.md)
-- [x] Step 2: Create application design plan
-- [x] Step 3: Include mandatory artifacts
-- [x] Step 4: Generate questions
-- [x] Step 5: Store plan (this file)
-- [x] Step 6: Request user input
-- [x] Step 7: Collect answers
-- [x] Step 8: Analyze answers for ambiguities — no ambiguities detected
-- [x] Step 9: Follow-up questions — N/A
-- [x] Step 10: Generate application design artifacts
-- [x] Step 11: Log approval in audit.md
-- [x] Step 12: Present completion message
-- [x] Step 13: Wait for explicit approval — APPROVED
-
-## Planned Artifacts
-- `aidlc-docs/inception/application-design/components.md`
-- `aidlc-docs/inception/application-design/component-methods.md`
-- `aidlc-docs/inception/application-design/services.md`
-- `aidlc-docs/inception/application-design/component-dependency.md`
-- `aidlc-docs/inception/application-design/application-design.md`
+[Answer]: B 

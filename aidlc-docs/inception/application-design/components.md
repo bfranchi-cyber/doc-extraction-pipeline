@@ -1,134 +1,106 @@
-# Components — Extraction Pipeline
+# Components — Analysis Step & Classify Refactor (2026-08-21)
 
 ## Component Overview
 
-| Component | Type | Role |
-|---|---|---|
-| `PipelineCoordinator` | Stateful class | Hub — orchestrates all stages, validates handoffs, writes scratchpad |
-| `IngestionAgent` | Async function module | Queries Google Drive, applies 5-day eligibility rule, returns eligible file list |
-| `ExtractionAgent` | Async class | Processes one document: extracts text, classifies category, stages images |
-| `AnalysisAgent` | Async function module | Enriches compact artifact into final Markdown with frontmatter and abstract |
-| `ExportAgent` | Async function module | Writes `.md` to vault, moves images, updates per-document manifest |
-| `ManifestStore` | Class | Manages per-document JSON manifest files; tracks processing state |
-| `Config` | Data class (loaded from `config.toml`) | Holds all runtime configuration (paths, Drive folder ID, category list) |
+| Component | Type | Change | Role |
+|---|---|---|---|
+| `AnalysisAgent` | Async class | **NEW** | Reads .md text, calls LLM via tool-use, writes YAML frontmatter |
+| `ClassificationAgent` | Async class | **UPDATED** | Classifies .md using frontmatter context; discovers vault categories dynamically at init |
+| `frontmatter` utility | Module | **NEW** | Shared read/write helpers for YAML frontmatter blocks |
+| `Extractor` | Async class | **UNCHANGED** | Extracts text from one .docx via Claude + MCP |
+| `main.py` / Orchestrator | Script | **UPDATED** | Inserts `analyze` step between `extract` and `classify` in `process_one()` |
+| `EvalAgent` | Async class | **UPDATED** | Decoupled from `VALID_CATEGORIES`; reads vault at init time |
 
 ---
 
-## Component: PipelineCoordinator
+## Component: AnalysisAgent (NEW)
 
-**Purpose**: Central hub of the prompt chaining pipeline. Instantiated once per run. Owns the scratchpad log, drives the pipeline sequence, validates stage outputs before handoff, and handles run-level error aggregation.
+**File**: `src/pipeline/analysis.py`
+
+**Purpose**: Enriches an extracted `.md` file with AI-generated YAML frontmatter (`summary`, `tags`, `confidence`) so that `ClassificationAgent` can use structured context instead of raw text.
 
 **Responsibilities**:
-- Initialize and hold scratchpad state for the duration of the run
-- Invoke each pipeline stage in sequence (Ingestion → Extraction → Analysis → Export)
-- Validate each stage's structured output before constructing the next stage's input
-- Log every stage transition, validation event, and error to the scratchpad
-- Write a run summary to the scratchpad on completion
-- Report per-document failures without halting the overall pipeline
+- Read the `.md` file text
+- Call the Anthropic async client using tool-use (structured output) to guarantee `{summary: str, tags: list[str], confidence: float}` schema compliance
+- Use `MEDIUM_MODEL` env var for the LLM call
+- Write YAML frontmatter block at the top of the file via `frontmatter.write_frontmatter()`
+- Emit OTEL span `"analyze"` with attributes: `document.name`, `eval.latency_ms`, `eval.api_error`, `eval.confidence`
+- On failure: log to Scratchpad, leave file without frontmatter, never raise
 
 **Key Interfaces**:
-- Input: `Config` instance
-- Output: scratchpad log file written to disk; per-document manifest files updated by `ExportAgent`
+- Input: `md_path: Path` (extracted `.md` file written by Extractor)
+- Output: `AnalysisResult | None` (returns `None` on failure; file is side-effected with frontmatter on success)
 
 ---
 
-## Component: IngestionAgent
+## Component: ClassificationAgent (UPDATED)
 
-**Purpose**: Discovers eligible documents from Google Drive using the 5-day eligibility rule, skipping already-processed files.
+**File**: `src/pipeline/classification.py`
+
+**Purpose**: Classifies a `.md` file into a vault folder using a short LLM call. Now reads YAML frontmatter (summary + tags) as classification context and discovers valid categories by scanning vault subfolders at startup.
 
 **Responsibilities**:
-- Authenticate via OAuth 2.0 (delegated to `google-auth` library + Drive MCP)
-- Query Google Drive for `.docx` and `.pdf` files not modified in >= 5 days
-- Filter against the `ManifestStore` to skip successfully-processed files
-- Return a list of eligible `DriveFileMetadata` objects to the Coordinator
-- Handle Drive API rate limits (wait retry-after duration) and transient errors
+- Discover valid vault categories by scanning `vault_root` immediate subdirectories at `__init__` time; cache as `self._valid_categories: frozenset[str]`
+- On each `classify()` call: read YAML frontmatter via `frontmatter.read_frontmatter()`; if present, use `summary` and `tags` as classification input; if absent, fall back to raw text excerpt (first 500 chars)
+- Build LLM prompt from discovered categories list (replaces hard-coded `VALID_CATEGORIES`)
+- Call `LIGHT_MODEL` for classification (unchanged)
+- Move file to matching vault folder
+- Emit OTEL span `"classify"` (unchanged attributes)
+- Log failures to Scratchpad; never raise
 
 **Key Interfaces**:
-- Input: `Config`, `ManifestStore`
-- Output: `list[DriveFileMetadata]`
+- Input to `classify()`: `md_path: Path`
+- Output: `bool` (True if file was moved, False otherwise)
+
+**Removed**: `VALID_CATEGORIES` module-level constant; `CATEGORY_DESCRIPTIONS` module-level constant
 
 ---
 
-## Component: ExtractionAgent
+## Component: Frontmatter Utility (NEW)
 
-**Purpose**: Processes a single document. Downloads it, extracts text via Claude Haiku 4.5, classifies it into a pre-defined vault category, and stages any embedded images to a temporary local folder.
+**File**: `src/pipeline/frontmatter.py`
+
+**Purpose**: Shared, stateless helpers for reading and writing YAML frontmatter blocks in `.md` files. Isolated in its own module so both `AnalysisAgent` and `ClassificationAgent` can import it without circular dependencies.
 
 **Responsibilities**:
-- Download the document binary from Google Drive to a temporary path
-- Extract full text content using the appropriate parser (`.docx` via `python-docx`, `.pdf` via `pypdf`)
-- Call Claude Haiku 4.5 to extract structured text and select the best-fit vault category from the configured list
-- Detect embedded images; download each to a temporary staging folder; record image ID and alt-text only
-- Produce a `CompactArtifact` TypedDict
-- Report parsing failures to the caller without raising unhandled exceptions
+- Parse the `---\n...\n---\n` block from the top of a `.md` file
+- Return `None` (not an error) when no frontmatter block is present
+- Prepend a valid YAML frontmatter block to an existing `.md` file
 
 **Key Interfaces**:
-- Input: `DriveFileMetadata`, `Config`
-- Output: `CompactArtifact` or `ExtractionError`
+- `read_frontmatter(md_path: Path) -> dict | None`
+- `write_frontmatter(md_path: Path, data: dict) -> None`
 
 ---
 
-## Component: AnalysisAgent
+## Component: Extractor (UNCHANGED)
 
-**Purpose**: Receives a `CompactArtifact` and produces a fully enriched Markdown document using Claude Sonnet 4.5.
+**File**: `src/pipeline/extraction.py`
 
-**Responsibilities**:
-- Format document text for Markdown readability (headings, lists, emphasis)
-- Properly format citations and references found in the source
-- Generate a YAML frontmatter block (title, date, auto-generated tags)
-- Write a short abstract/summary section at the top of the document body
-- Preserve all semantic content exactly — no facts added, altered, or removed
-- Handle Claude API rate limits per Anthropic SDK guidance
-
-**Key Interfaces**:
-- Input: `CompactArtifact`
-- Output: `EnrichedDocument` (final Markdown string + metadata)
+**Purpose**: Extracts text from one `.docx` file via Claude + FastMCP. No changes in this iteration.
 
 ---
 
-## Component: ExportAgent
+## Component: main.py / Pipeline Orchestrator (UPDATED)
 
-**Purpose**: Writes the enriched Markdown to the correct vault category folder, moves staged images to the images folder, injects absolute local image URIs, and updates the per-document manifest.
+**File**: `src/pipeline/main.py`
 
-**Responsibilities**:
-- Resolve the vault subfolder from `EnrichedDocument.category`; fall back to `Uncategorized/` if the category folder does not exist
-- Write the `.md` file to `{vault_path}/{category}/{filename}.md`
-- Move all staged images for the document from the temporary folder to `{images_path}/{document_name}/`
-- Rewrite image references in the Markdown to absolute `file:///` URIs
-- Update the per-document manifest file (status: `success`, timestamp)
-- Log the fallback-to-Uncategorized event to the scratchpad if triggered
+**Purpose**: CLI entry point. Discovers `.docx` files, instantiates all agents, and orchestrates `extract → analyze → classify` per document in parallel via `asyncio.gather`.
 
-**Key Interfaces**:
-- Input: `EnrichedDocument`, `Config`, list of staged image paths
-- Output: written `.md` file; updated manifest file; images moved to final location
+**Changes**:
+- Instantiates `AnalysisAgent(scratchpad)`
+- Calls `await analyzer.analyze(output_path)` in `process_one()` after extraction, before classification
+- No changes to CLI interface or parallelism model
 
 ---
 
-## Component: ManifestStore
+## Component: EvalAgent (UPDATED)
 
-**Purpose**: Manages idempotency state. One JSON file per Google Drive document, stored in a configured manifest directory. No concurrent write conflicts because manifest updates happen sequentially via `ExportAgent`.
+**File**: `src/eval/eval_agent.py`
 
-**Responsibilities**:
-- Load a document's manifest record by Drive file ID (returns `None` if not yet processed)
-- Write or update a document's manifest record (status, timestamps)
-- Enumerate all failed records for retry logic
-- Provide a method to check if a document was successfully processed
+**Purpose**: LLM-as-judge for classification quality. Decoupled from hard-coded `VALID_CATEGORIES` and `CATEGORY_DESCRIPTIONS` in `classification.py`.
 
-**Key Interfaces**:
-- Input: `Config` (manifest directory path)
-- Methods: `get(file_id)`, `set(file_id, record)`, `is_processed(file_id)`, `list_failed()`
-
----
-
-## Component: Config
-
-**Purpose**: Single source of truth for all runtime configuration. Loaded from `config.toml` at startup. Immutable after load.
-
-**Responsibilities**:
-- Hold all file system paths (vault, images, manifest directory, temp staging, credentials, scratchpad)
-- Hold Google Drive folder ID to monitor
-- Hold the list of valid vault category names (pre-existing vault folders)
-- Hold model IDs (Haiku 4.5 for extraction, Sonnet 4.5 for analysis)
-
-**Key Interfaces**:
-- Loaded via `Config.from_toml(path)` class method
-- Accessed as a read-only dataclass throughout the pipeline
+**Changes**:
+- Accepts `vault_root: Path | None` as constructor argument (was implicit via classification import)
+- If `vault_root` is set: reads vault subdirectories at init time to build the category list for the judge prompt
+- Requires `OBSIDIAN_VAULT_PATH` to be set when running eval (already required for classification; no new constraint)

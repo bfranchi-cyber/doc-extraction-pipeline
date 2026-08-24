@@ -1,94 +1,121 @@
-# Requirements Clarification — Phoenix Tracing & Eval
+# Requirements Analysis — Clarifying Questions
 
-Please answer each question by filling in the letter choice after `[Answer]:`.
-If none of the options fit, choose the last option and describe your preference.
+Please answer each question by filling in the letter choice (or free text) after the `[Answer]:` tag.
+Let me know when you're done.
 
 ---
 
 ## Question 1
-How should Phoenix run during local development and pipeline execution?
+What is your new development request? Describe what you want to build, change, or fix.
 
-A) In-process — call `px.launch_app()` at pipeline startup; Phoenix UI available on localhost while the process is running (simplest, no Docker required)
+A) A new feature or enhancement to the existing pipeline
 
-B) External server — connect to a separately running Phoenix instance (e.g., Docker container or remote host); pipeline only sends OTLP traces to it
+B) A bug fix in the existing pipeline or eval system
 
-C) Other (please describe after [Answer]: tag below)
+C) A new capability not currently in the codebase (describe below)
 
-[Answer]: A
+D) A refactor or quality improvement
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: C, we are adding a couple changes:
+
+1. There will be a new step inside the pipeline, Analysis. Prior to classify. In this step our agent is going to read the extracted text and generate a JSON structured output with the summary, tags (3-5 keywords) and confidence. This JSON output then should be added as YAML frontmatter to the .mds
+2. Classify agent will now use the frontmatter as the context for classifying the .mds into their respective folders. 
+3. Classify will dynamically discover the folders inside the vault.
+
 
 ---
 
 ## Question 2
-Which parts of the pipeline should be traced?
+What is the scope of the change?
 
-A) Classification only — trace every `ClassificationAgent.classify()` call (LLM request, response, category, latency)
+A) Single module / single file
 
-B) Full pipeline — trace both extraction (`Extractor.process()`) and classification in the same trace, linked by a parent span
+B) Within one package (pipeline OR eval), touching multiple files
 
-C) Other (please describe after [Answer]: tag below)
+C) Cross-package (both pipeline and eval affected)
+
+D) New package / new entry point
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: C
+
+---
+
+## Question 3
+Are there any specific technical constraints or preferences for the implementation?
+(e.g. must reuse existing patterns, must not change public interfaces, must work offline, specific library preference)
+
+A) No constraints — use best judgment
+
+B) Yes — stay strictly within existing patterns and module boundaries
+
+C) Yes — specific constraint (describe after [Answer]: tag below)
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: X, no constraints, lets discuss pros and cons before defining
+
+---
+
+## Question 4
+What does success look like? How will you know the implementation is correct?
+
+A) It passes the existing test suite with no regressions
+
+B) New tests are written and pass
+
+C) Manual end-to-end test (describe scenario after [Answer]: tag below)
+
+D) Observable change in Phoenix / eval output
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: B + C: there is relevant frontmatter into the files and they are correctly classified.
+
+---
+
+## Question: Security Extensions
+Should security extension rules be enforced for this project?
+
+A) Yes — enforce all SECURITY rules as blocking constraints (recommended for production-grade applications)
+
+B) No — skip all SECURITY rules (suitable for PoCs, prototypes, and experimental projects)
+
+X) Other (please describe after [Answer]: tag below)
 
 [Answer]: B
 
 ---
 
-## Question 3
-What eval metrics do you want collected?
+## Question: Resiliency Extensions
+Should the resiliency baseline be applied to this project?
 
-A) LLM-as-a-judge quality eval — for each classification, a second LLM call judges whether the assigned category is correct given the document excerpt (requires `MEDIUM_MODEL`)
+**What this extension is.** Enabling it applies a set of **directional, design-time best practices** for building resilient systems, derived from the **AWS Well-Architected Framework (Reliability Pillar)**. It steers requirements, design, and code toward fault tolerance, observability, and recoverability.
 
-B) Programmatic metrics only — no second LLM call; collect: latency per call, category distribution (% per category), unknown rate (% classified as `unknown`), API error rate
+**What this extension is NOT.** It does not make your workload production-ready or certify any availability target. It is a starting point, not a substitute for a formal AWS Well-Architected Review.
 
-C) Both — programmatic metrics + LLM-as-a-judge quality eval
+A) Yes — apply the resiliency baseline as directional best practices
 
-D) Other (please describe after [Answer]: tag below)
+B) No — skip the resiliency baseline (suitable for local CLI tools and experimental projects)
 
-[Answer]: C 
+X) Other (please describe after [Answer]: tag below)
 
----
-
-## Question 4
-When should evals run?
-
-A) Online — evals run immediately after each classify() call, within the same pipeline execution
-
-B) Offline — evals run separately after traces are collected, as a distinct CLI command or script
-
-C) Other (please describe after [Answer]: tag below)
-
-[Answer]: A
+[Answer]: B
 
 ---
 
-## Question 5
-How should the Phoenix project be named in the UI?
+## Question: Property-Based Testing Extension
+Should property-based testing (PBT) rules be enforced for this project?
 
-A) `docs-extraction` (matches the package name)
+A) Yes — enforce all PBT rules as blocking constraints
 
-B) `classification-agent` (matches the component name)
+B) Partial — enforce PBT rules only for pure functions and serialization round-trips
 
-C) Other (please describe after [Answer]: tag below)
+C) No — skip all PBT rules
 
-[Answer]: A
+X) Other (please describe after [Answer]: tag below)
 
----
-
-## Extension Configuration (carrying forward from previous iteration)
-
-The following extension settings were decided in the previous cycle.
-Please confirm they still apply, or override below.
-
-| Extension | Previous Decision |
-|---|---|
-| Security Baseline | No |
-| Resiliency Baseline | No |
-| Property-Based Testing | Partial (PBT-02, 07, 08) |
-
-## Question 6
-Should the extension configuration above carry forward unchanged?
-
-A) Yes — keep all three settings as-is
-
-B) No — I want to change one or more (please describe after [Answer]: tag below)
-
-[Answer]: A
-
+[Answer]: B

@@ -1,32 +1,45 @@
 # Technology Stack
 
 ## Programming Languages
-- Python 3.11+ — primary and only language
+- **Python** — >=3.11 — All application code and tests
 
-## Frameworks / Libraries
-- `anthropic[mcp] >=0.25` — Anthropic Python SDK (LLM API client + MCP extras)
-- `mcp >=1.8,<2.0` — Model Context Protocol SDK (`FastMCP` server)
-- `mammoth >=1.6` — DOCX to plain text converter
+## Frameworks & Libraries
 
-## Infrastructure
-- Local filesystem only — no cloud services, no databases
+### Core
+| Library | Version | Purpose |
+|---|---|---|
+| anthropic | >=0.25 | Claude LLM API (AsyncAnthropic client) |
+| mammoth | >=1.6 | .docx → plain text extraction |
+| mcp | >=1.8,<2.0 | MCP server framework (FastMCP) |
+
+### Observability / Tracing
+| Library | Version | Purpose |
+|---|---|---|
+| arize-phoenix | >=4.0 | Local Phoenix OTEL collector + UI + px.Client |
+| arize-phoenix-otel | >=0.6 | Phoenix OTEL provider registration |
+| openinference-instrumentation-anthropic | >=0.1 | Auto-instrument Anthropic SDK as OTEL spans |
+| opentelemetry | (transitive) | OTEL SDK — trace.get_tracer, span API |
 
 ## Build Tools
-- `setuptools >=68` — build backend
-- `uv` — fast Python package manager and project tool (replaces pip+venv)
-- `pyproject.toml` — PEP 517/518 project configuration
+| Tool | Version | Purpose |
+|---|---|---|
+| setuptools | >=68 | Build backend |
+| pip | — | Package installation |
 
 ## Testing Tools
-- `pytest >=7.0` — test runner
-- `pytest-cov >=4.0` — coverage reporting (threshold: 65%)
-- `hypothesis >=6.0` — property-based testing
+| Tool | Version | Purpose |
+|---|---|---|
+| pytest | >=7.0 | Test runner |
+| pytest-asyncio | >=0.23 | Async test support (asyncio_mode = auto) |
+| pytest-cov | >=4.0 | Coverage reporting |
+| hypothesis | >=6.0 | Property-based testing |
 
 ## Environment Variables (runtime)
 | Variable | Required | Purpose |
 |---|---|---|
-| `LIGHT_MODEL` | Yes | Claude model ID for classification (e.g., `claude-haiku-4-5-20251001`) |
-| `MEDIUM_MODEL` | No | Reserved for future Sonnet-class agents |
-| `HEAVY_MODEL` | No | Reserved for future Opus-class agents |
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API authentication |
-| `ANTHROPIC_BASE_URL` | No | Proxy URL override (defaults to Anthropic SDK default) |
-| `OBSIDIAN_VAULT_PATH` | No | Root path of Obsidian vault; classification is skipped if unset |
+| ANTHROPIC_API_KEY | Yes | Anthropic API authentication |
+| LIGHT_MODEL | Yes | Claude model for classification (e.g. claude-haiku-4-5-20251001) |
+| MEDIUM_MODEL | Yes | Claude model for eval judging |
+| OBSIDIAN_VAULT_PATH | No | Path to vault; classification skipped if absent |
+| PHOENIX_HOST | No | Phoenix host:port (default: localhost:6006) |
+| ANTHROPIC_BASE_URL | No | Proxy override for Anthropic SDK |
