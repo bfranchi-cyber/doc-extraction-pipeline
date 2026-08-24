@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 
 @pytest.fixture()
-def agent(monkeypatch):
+def vault_root(tmp_path: Path) -> Path:
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    for cat in ("Architecture", "Cloud", "Coding"):
+        (vault / cat).mkdir()
+    return vault
+
+
+@pytest.fixture()
+def agent(monkeypatch, vault_root: Path):
     monkeypatch.setenv("MEDIUM_MODEL", "claude-test-model")
     monkeypatch.setenv("PHOENIX_HOST", "localhost:6006")
 
@@ -17,7 +27,7 @@ def agent(monkeypatch):
 
     with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
         from eval.eval_agent import EvalAgent
-        a = EvalAgent()
+        a = EvalAgent(vault_root=vault_root)
         a._client = mock_anthropic_client
         return a, mock_anthropic_client
 
@@ -78,3 +88,50 @@ async def test_run_evals_no_spans(agent, monkeypatch):
         result = await eval_agent.run_evals()
 
     assert result == {"evaluated": 0, "correct": 0, "incorrect": 0}
+
+
+@pytest.mark.asyncio
+async def test_judge_prompt_includes_discovered_categories(agent):
+    """Judge prompt should reference categories discovered from vault_root."""
+    eval_agent, mock_client = agent
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="correct")]
+    mock_client.messages.create = AsyncMock(return_value=mock_response)
+
+    span = {
+        "attributes": {"document.name": "test.md", "eval.category": "Cloud"},
+        "input.value": "Cloud content",
+    }
+    await eval_agent._judge_span(span)
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    prompt_text = call_kwargs["messages"][0]["content"]
+    assert "Architecture" in prompt_text or "Cloud" in prompt_text or "Coding" in prompt_text
+
+
+@pytest.mark.asyncio
+async def test_eval_agent_without_vault_root_omits_category_list(monkeypatch):
+    """EvalAgent with vault_root=None should not include a category list in the prompt."""
+    monkeypatch.setenv("MEDIUM_MODEL", "claude-test-model")
+
+    mock_anthropic_module = MagicMock()
+    mock_anthropic_client = MagicMock()
+    mock_anthropic_module.AsyncAnthropic.return_value = mock_anthropic_client
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="correct")]
+    mock_anthropic_client.messages.create = AsyncMock(return_value=mock_response)
+
+    with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
+        from eval.eval_agent import EvalAgent
+        a = EvalAgent(vault_root=None)
+        a._client = mock_anthropic_client
+
+    span = {
+        "attributes": {"document.name": "test.md", "eval.category": "Cloud"},
+        "input.value": "content",
+    }
+    await a._judge_span(span)
+
+    call_kwargs = mock_anthropic_client.messages.create.call_args.kwargs
+    prompt_text = call_kwargs["messages"][0]["content"]
+    assert "Valid categories" not in prompt_text
