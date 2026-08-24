@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-import os
-
 import asyncio
+import os
+from pathlib import Path
 
 import anthropic
 
-from pipeline.classification import CATEGORY_DESCRIPTIONS, VALID_CATEGORIES
-
 
 class EvalAgent:
-    def __init__(self) -> None:
+    def __init__(self, vault_root: Path | None = None) -> None:
         self._model = os.environ["MEDIUM_MODEL"]
         self._phoenix_host = os.environ.get("PHOENIX_HOST", "localhost:6006")
         self._client = anthropic.AsyncAnthropic()
+        self._categories: list[str] = []
+        if vault_root is not None:
+            self._categories = sorted(p.name for p in vault_root.iterdir() if p.is_dir())
 
     async def run_evals(self) -> dict:
         """Query Phoenix for unevaluated classify spans and judge each one.
@@ -72,18 +73,19 @@ class EvalAgent:
             category = attrs.get("eval.category", "")
             input_value = span.get("input.value", "")
 
-            category_list = "\n".join(
-                f"- {k}: {v}" for k, v in CATEGORY_DESCRIPTIONS.items()
-            )
-            valid_names = ", ".join(sorted(VALID_CATEGORIES))
+            if self._categories:
+                valid_names = ", ".join(self._categories)
+                category_section = f"\nValid categories: {valid_names}\n"
+            else:
+                category_section = ""
 
             judge_prompt = (
                 f"You are evaluating a document classification.\n\n"
                 f"Document: {document_name}\n"
                 f"Excerpt: {str(input_value)[:500]}\n"
-                f"Predicted category: {category}\n\n"
-                f"Valid categories and their descriptions:\n{category_list}\n\n"
-                f"Is the predicted category correct for this document?\n"
+                f"Predicted category: {category}\n"
+                f"{category_section}"
+                f"\nIs the predicted category correct for this document?\n"
                 f"Respond with ONLY 'correct' or 'incorrect'."
             )
 
